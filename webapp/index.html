@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MY CINEMA</title>
+<meta name="theme-color" content="#0f121b">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🎬%3C/text%3E%3C/svg%3E">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--n-bg:#0f121b;--n-card:rgba(27,32,48,.78);--n-line:#2c3350;--n-tx:#f3f1ec;--n-mu:#8f96b0;--pb:9%;--pc:12%;--pl:24%;--pt:6%;--pm:30%;--go:#e9b872;--sh:0 8px 24px #0006;
+--bg:color-mix(in srgb,var(--go) var(--pb),var(--n-bg));--card:color-mix(in srgb,var(--go) var(--pc),var(--n-card));--line:color-mix(in srgb,var(--go) var(--pl),var(--n-line));--tx:color-mix(in srgb,var(--go) var(--pt),var(--n-tx));--mu:color-mix(in srgb,var(--go) var(--pm),var(--n-mu))}
+[data-theme=light]{--n-bg:#f6f4f0;--n-card:rgba(255,255,255,.82);--n-line:#e3dfd6;--n-tx:#1d1b17;--n-mu:#78746a;--pb:14%;--pc:9%;--pl:30%;--pt:8%;--pm:20%;--sh:0 6px 18px #0001}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,sans-serif;padding:calc(16px + var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px)) 14px 100px;min-height:100vh;max-width:560px;margin:0 auto}
+h1{font-size:22px;letter-spacing:.5px;background:linear-gradient(90deg,var(--tx),var(--go));-webkit-background-clip:text;color:transparent}
+h2{font-size:18px;margin:4px 0 12px}.mu{color:var(--mu);font-size:14px}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.back{background:var(--card);border:1px solid var(--line);border-radius:12px;width:38px;height:38px;color:var(--go);font-size:22px;cursor:pointer;display:none}
+#app.n>*{animation:in .3s}@keyframes in{from{opacity:0;transform:translateY(8px)}}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:18px;color:var(--tx);padding:18px 8px;font-size:15px;cursor:pointer;box-shadow:var(--sh)}
+.tile:active{transform:scale(.97)}.tile b{display:block;font-size:26px;margin-bottom:4px}
+.stats{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:14px 0;display:flex;justify-content:space-around;text-align:center;box-shadow:var(--sh)}
+.stats b{font-size:28px;display:block;color:var(--go)}
+.big{display:flex;align-items:center;gap:16px;width:100%;margin-bottom:16px;padding:26px 20px;border-radius:24px;cursor:pointer;color:#1b1608;color:oklch(from var(--go) clamp(0,(.68 - l)*1000,1) 0 0);text-align:left;font:inherit;background:linear-gradient(135deg,color-mix(in srgb,var(--go) 88%,#fff),color-mix(in srgb,var(--go) 62%,var(--bg)));border:1px solid color-mix(in srgb,var(--go) 45%,var(--line));box-shadow:0 10px 28px color-mix(in srgb,var(--go) 30%,transparent)}
+.big:active{transform:scale(.98)}.big .ic{font-size:44px;line-height:1}.big .tx{flex:1;min-width:0}.big b{display:block;font-size:21px}.big small{display:block;opacity:.75;font-size:13px;margin-top:2px}.big .ar{font-size:34px;opacity:.55}
+.nb{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px;color:var(--tx);cursor:pointer;box-shadow:var(--sh);font:inherit}
+.nb:active{transform:scale(.98)}.nb .ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:24px;flex:none;background:linear-gradient(135deg,color-mix(in srgb,var(--go) 38%,transparent),color-mix(in srgb,var(--go) 8%,transparent));border:1px solid color-mix(in srgb,var(--go) 40%,var(--line))}
+.nb .tx{flex:1;min-width:0}.nb b{display:block;font-size:16px}.nb small{display:block;color:var(--mu);font-size:12px;margin-top:2px}.nb .ar{color:var(--go);font-size:26px}
+.list{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:8px;cursor:pointer}
+.row img,.ph{width:60px;height:90px;border-radius:10px;object-fit:cover;background:var(--line);flex:none}
+.row .t{font-weight:600}.row .m{color:var(--mu);font-size:13px;margin-top:3px}
+[data-dens=c] .row img,[data-dens=c] .ph{width:44px;height:66px}[data-dens=c] .row{padding:5px}
+.badge{color:var(--go);font-weight:700}
+input,select,textarea{width:100%;background:var(--card);border:1px solid var(--line);color:var(--tx);border-radius:12px;padding:12px;font:inherit;margin-bottom:10px;outline:none}
+input:focus,textarea:focus{border-color:var(--go)}
+button.go{background:linear-gradient(135deg,var(--go),color-mix(in srgb,var(--go) 70%,#fff));color:#1b1608;border:0;border-radius:12px;padding:13px 16px;font-weight:700;font-size:15px;cursor:pointer}
+.wbtn{margin-left:auto;align-self:center;flex:none;width:42px;height:42px;border-radius:50%;border:0;padding:0;cursor:pointer;font-size:16px;background:linear-gradient(135deg,var(--go),color-mix(in srgb,var(--go) 70%,#fff));color:#1b1608}
+button.ghost{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;font-size:14px}
+button.on{border-color:var(--go);color:var(--go)}
+.wrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.bar{height:8px;background:var(--line);border-radius:4px;margin-top:8px}.bar i{display:block;height:100%;background:var(--go);border-radius:4px}
+.sheet{position:fixed;inset:0;background:color-mix(in srgb,var(--bg) 97%,transparent);overflow:auto;padding:calc(14px + var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px)) max(14px,calc(50% - 266px)) 50px;z-index:6}
+.hero{display:flex;gap:14px;margin-bottom:14px}.hero img{width:100px;border-radius:12px}
+.sec{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.cin-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:16px 0 10px}
+.cin-h b{font-size:15px}.cin-h span{font-size:12px;color:var(--mu)}
+.cin-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:9px}
+button.cin{position:relative;display:flex;align-items:center;gap:10px;min-height:56px;padding:9px 12px 9px 9px;border:0;border-radius:15px;cursor:pointer;text-align:left;overflow:hidden;font:inherit;color:var(--fg,#fff);background:linear-gradient(135deg,var(--c1),var(--c2));box-shadow:0 5px 16px color-mix(in srgb,var(--c1) 38%,transparent),inset 0 0 0 1px rgba(255,255,255,.16);transition:transform .15s,box-shadow .15s}
+button.cin::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,.2),rgba(255,255,255,0) 48%)}
+button.cin:hover{box-shadow:0 7px 20px color-mix(in srgb,var(--c1) 55%,transparent),inset 0 0 0 1px rgba(255,255,255,.28)}
+button.cin:active{transform:scale(.96)}
+.cin .lg{position:relative;flex:0 0 38px;height:38px;border-radius:11px;background:#fff;display:grid;place-items:center;overflow:hidden;font-weight:800;font-size:17px;color:var(--c1)}
+.cin .lg img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:5px;box-sizing:border-box;background:#fff}
+.cin .nm{min-width:0;display:flex;flex-direction:column;gap:2px;line-height:1.15}
+.cin .nm b{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cin .nm i{font-style:normal;font-size:11px;opacity:.82;white-space:nowrap}
+.cin .ar{margin-left:auto;font-size:22px;line-height:1;opacity:.9}
+.pw{margin-top:10px}.pbox{position:relative;padding-top:56.25%;border-radius:12px;overflow:hidden;background:#000}.pbox iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.pbar{display:flex;gap:8px;margin-top:10px}.pbar button{flex:1}
+.pw.fs{position:fixed;inset:0;z-index:30;margin:0;background:#000;display:flex;flex-direction:column;padding:calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px)) 0 env(safe-area-inset-bottom,0px)}
+.pw.fs .pbox{flex:1;padding-top:0;border-radius:0}.pw.fs .pbar{margin:0;padding:8px;background:#000}.pw.fs #ph{display:none}
+.hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.chips{display:flex;gap:8px;margin-bottom:8px;overflow:auto}
+#tabs{position:fixed;left:max(10px,calc(50% - 270px));right:max(10px,calc(50% - 270px));bottom:calc(10px + max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px)));display:flex;background:color-mix(in srgb,var(--bg) 90%,var(--card));backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:22px;padding:6px;box-shadow:var(--sh);z-index:4}
+#tabs button{flex:1;background:none;border:0;color:var(--mu);font-size:11px;padding:6px 0;border-radius:16px;cursor:pointer}
+#tabs button span{display:block;font-size:20px}#tabs button.on{color:var(--go);background:color-mix(in srgb,var(--go) 14%,transparent)}
+.fc{border-radius:24px;overflow:hidden;background:var(--card);border:1px solid var(--line);box-shadow:var(--sh);cursor:pointer}
+.fc img{width:100%;height:min(60vh,560px);object-fit:contain;background:color-mix(in srgb,var(--bg) 60%,#000);display:block}
+.fb{padding:14px 16px 16px}.fb .t{font-size:19px;font-weight:700}.fb p{margin-top:8px;color:var(--mu);font-size:14px}
+.acts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.acts button{background:var(--card);border:1px solid var(--line);border-radius:16px;color:var(--tx);padding:10px 2px;font-size:11px;cursor:pointer}
+.acts b{display:block;font-size:22px;margin-bottom:2px}.acts button:first-child b{color:#ff6b6b}.acts button:last-child b{color:#ff5d8f}
+.prof{display:flex;gap:14px;align-items:center;margin-bottom:14px}
+.av{width:72px;height:72px;border-radius:50%;background:var(--card);border:2px solid var(--go);display:grid;place-items:center;font-size:36px}
+.flag{width:22px;height:15px;border-radius:3px;box-shadow:0 0 0 1px #0004;flex:none}button.lg{display:inline-flex;align-items:center;gap:8px}
+.sw{width:36px;height:36px;border-radius:50%;border:3px solid transparent;padding:0;cursor:pointer}.sw.on{border-color:var(--tx)}
+
+/* Фон: градиенты вместо filter:blur(80px) — анимация идёт на GPU и не перерисовывается */
+#bg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+#bg i{position:absolute;border-radius:50%;opacity:.5;animation:fl 24s ease-in-out infinite alternate;will-change:transform}
+#bg i:nth-child(1){width:90vmax;height:90vmax;left:-35vmax;top:-35vmax;background:radial-gradient(circle,var(--b1) 0,transparent 65%)}
+#bg i:nth-child(2){width:85vmax;height:85vmax;right:-35vmax;bottom:-30vmax;background:radial-gradient(circle,var(--b2) 0,transparent 65%);animation-duration:30s;animation-delay:-8s}
+#bg i:nth-child(3){width:60vmax;height:60vmax;left:20%;top:30%;background:radial-gradient(circle,var(--b3) 0,transparent 65%);opacity:.28;animation-duration:36s;animation-delay:-15s}
+@keyframes fl{to{transform:translate3d(9vmax,7vmax,0) scale(1.15)}}
+.pause #bg i{animation-play-state:paused}
+#bg .grain{position:absolute;inset:0;opacity:.04;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
+#bg .film{position:absolute;inset:0;display:none;background:repeating-linear-gradient(#0000 0 16px,#ffffff22 16px 28px) left 6px top 0/9px 100% no-repeat,repeating-linear-gradient(#0000 0 16px,#ffffff22 16px 28px) right 6px top 0/9px 100% no-repeat}
+:root,[data-bg=aurora]{--b1:var(--go);--b2:color-mix(in srgb,var(--go) 55%,#000);--b3:color-mix(in srgb,var(--go) 55%,#fff)}
+[data-bg=sunset]{--b1:#ff7a59;--b2:#c2398a;--b3:#ffb86b}
+[data-bg=ocean]{--b1:#2b8cff;--b2:#12d6c4;--b3:#5b4bdb}
+[data-bg=forest]{--b1:#2fbf71;--b2:#0f8b8d;--b3:#a3e635}
+[data-bg=cinema]{--b1:#b3122b;--b2:#5a0a1a;--b3:#e9b872}
+[data-bg=cinema] #bg .film{display:block}
+[data-bg=none] #bg{display:none}
+[data-theme=light] #bg i{opacity:.34}
+@media (prefers-reduced-motion:reduce){#bg i{animation:none}}
+.av.s{width:46px;height:46px;font-size:24px;border-width:2px;flex:none}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#5fcf8f;margin-right:5px;box-shadow:0 0 8px #5fcf8f}.dot.off{background:var(--mu);opacity:.5;box-shadow:none}
+.code{font-size:28px;letter-spacing:4px;font-weight:700;color:var(--go);margin:4px 0}
+.opt{display:block;width:100%;text-align:left;margin-bottom:8px}.opt small{display:block;color:var(--mu);font-size:12px;margin-top:2px}
+.msgs{display:flex;flex-direction:column;gap:6px;padding-bottom:70px}
+.msg{max-width:80%;padding:8px 12px;border-radius:16px 16px 16px 4px;background:var(--card);border:1px solid var(--line);white-space:pre-wrap;word-break:break-word}
+.msg.me{align-self:flex-end;border-radius:16px 16px 4px 16px;background:color-mix(in srgb,var(--go) 26%,var(--card));border-color:var(--go)}
+.msg small{display:block;color:var(--mu);font-size:11px;margin-top:2px;text-align:right}
+.comp{position:fixed;left:max(10px,calc(50% - 270px));right:max(10px,calc(50% - 270px));bottom:calc(80px + max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px)));display:flex;gap:8px;z-index:3}.comp input{margin:0}
+#inv{position:sticky;top:calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px));z-index:5}
+.ib{display:flex;gap:8px;align-items:center;background:var(--card);border:1px solid var(--go);border-radius:14px;padding:8px 10px;margin-bottom:8px;backdrop-filter:blur(10px);box-shadow:var(--sh)}.ib span{flex:1;font-size:14px}
+#spw{position:relative;padding-top:56.25%;background:#000;overflow:hidden}
+#sp,#shield{position:absolute;inset:0}#sp iframe{width:100%;height:100%;border:0}#shield{z-index:2}
+#tap{position:absolute;z-index:3;left:50%;top:50%;transform:translate(-50%,-50%)}
+
+/* Плеер, полный экран, чат сессии */
+#stage{position:relative;border-radius:14px;overflow:hidden;background:#000}#stage.hm{margin-bottom:12px}
+#stage.fs{position:fixed;left:0;top:0;right:0;bottom:0;z-index:100;border-radius:0;margin:0}
+#stage.fs #spw{position:absolute;inset:0;padding:0}
+#stage.rot{right:auto;bottom:auto;transform-origin:0 0}
+html.fsmode,html.fsmode body{overflow:hidden}
+#fso{position:absolute;inset:0;z-index:5;pointer-events:none}#fso>*{pointer-events:auto}
+#fsb{position:absolute;top:50%;right:8px;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px}
+#stage.co #fsb{top:10px;right:10px;transform:none;flex-direction:row;gap:8px}
+#stage.fs:not(.rot) #fsb{right:calc(8px + env(safe-area-inset-right,0px))}
+#stage.fs.co:not(.rot) #fsb{top:calc(10px + var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px))}
+#fsb button{position:relative;width:42px;height:42px;border-radius:50%;border:0;background:#000a;color:#fff;font-size:20px;cursor:pointer;opacity:.7;backdrop-filter:blur(6px);padding:0}
+#fsb button:hover,#fsb button:active{opacity:1}
+#stage:not(.fs) #bfs{opacity:.9;width:46px;height:46px;font-size:22px}
+#stage:not(.fs) #bch,#stage:not(.fs) #brt{display:none!important}
+#bdg{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--go);color:#1b1608;font:700 11px/18px system-ui;font-style:normal;padding:0 4px}#bdg[hidden]{display:none}
+#fst{position:absolute;left:12px;bottom:72px;display:flex;flex-direction:column;gap:6px;max-width:55%;pointer-events:none!important}
+.toast{background:#000c;color:#fff;border-radius:14px;padding:8px 12px;font-size:14px;word-break:break-word;animation:in .25s;display:flex;gap:8px;align-items:center;cursor:pointer;pointer-events:auto}
+.toast .tt{min-width:0}.toast b{display:block;font-size:12px;color:var(--go)}
+#ntf{position:fixed;left:max(10px,calc(50% - 270px));right:max(10px,calc(50% - 270px));bottom:calc(86px + max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px)));z-index:7;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.av.xs{width:30px;height:30px;font-size:16px;border-width:1px;flex:none}
+.mrow{display:flex;gap:6px;align-items:flex-end}.mrow.me{flex-direction:row-reverse}.mrow .msg{max-width:78%}
+.who{font-size:12px;font-weight:700;color:var(--go);margin-bottom:2px}
+.mimg{display:block;max-width:100%;max-height:260px;min-width:120px;min-height:80px;border-radius:12px;margin:2px 0 4px;background:#0003;object-fit:cover;cursor:zoom-in}
+.typ{min-height:18px;font-size:12px;color:var(--mu);padding:2px 4px}#fsc .typ{color:#fffb}
+.dots::after{content:'';animation:dt 1.2s steps(1) infinite}@keyframes dt{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+.att{display:grid;place-items:center;cursor:pointer;flex:none}#fsc .att{background:#fff2;color:#fff;border-color:#fff3}
+.imgv{position:fixed;inset:0;z-index:300;background:#000e;display:flex;align-items:center;justify-content:center;padding:10px}.imgv img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+#stage.fs #fst .toast{pointer-events:auto}
+#fsc{position:absolute;top:0;right:0;bottom:0;width:min(340px,48%);background:#000d;backdrop-filter:blur(10px);display:flex;flex-direction:column;padding:62px 10px 10px;color:#fff}
+#fsc[hidden]{display:none}#fsc .cm{flex:1;max-height:none}
+#stage.port #fsc{top:auto;left:0;width:auto;height:55%;padding-top:10px}
+.cm{display:flex;flex-direction:column;gap:6px;overflow:auto;max-height:36vh;min-height:70px;padding:2px}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.fg>*{margin:0!important;min-width:0}
+.cin{display:flex;gap:8px;margin-top:8px}.cin input{margin:0}
+.react{display:flex;gap:6px;margin-top:8px}.react .rx{flex:1;padding:6px 0;font-size:18px}
+#fsc .msg{background:#fff2;border-color:#fff3;color:#fff}#fsc .msg.me{background:color-mix(in srgb,var(--go) 40%,#0008);border-color:var(--go)}#fsc .msg small{color:#fffa}
+#fsc input,#fsc .rx{background:#fff2;color:#fff;border-color:#fff3}
+.fl{position:absolute;bottom:14%;font-size:34px;z-index:6;pointer-events:none;animation:flo 2.4s ease-out forwards}
+@keyframes flo{from{opacity:1;transform:translateY(0) scale(.8)}to{opacity:0;transform:translateY(-150px) scale(1.4)}}
+#login{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
+#login .box{max-width:360px;width:100%;text-align:center}#login .lg0{font-size:56px;line-height:1;margin-bottom:10px}
+#login h1{font-size:30px;margin-bottom:8px}#login p{margin-bottom:18px}
+</style></head><body>
+<div id="bg"><i></i><i></i><i></i><b class="grain"></b><b class="film"></b></div>
+<div class="top"><button class="back" id="back">‹</button><div><h1>MY CINEMA</h1><div class="mu" id="sub"></div></div></div>
+<div id="inv"></div><div id="app"></div><nav id="tabs"></nav><div id="sheet" class="sheet" hidden></div>
+<script>
+const TGW=(window.Telegram&&Telegram.WebApp)||{};
+const IN_TG=!!TGW.initData;                     // true: открыто как Mini App в Telegram, false: обычный сайт
+const tg=IN_TG?TGW:{initData:'',initDataUnsafe:{},ready(){},expand(){},onEvent(){},isVersionAtLeast:()=>false,isFullscreen:false,
+  showAlert:m=>alert(m),showConfirm:(m,cb)=>cb(confirm(m)),openTelegramLink:u=>window.open(u,'_blank','noopener')};
+tg.ready();tg.expand();
+try{if(tg.requestFullscreen&&tg.isVersionAtLeast('8.0')&&!tg.isFullscreen)tg.requestFullscreen()}catch(e){}   // мини-приложение на весь экран (Telegram 8.0+)
+
+/* ───────── Переводы ───────── */
+const I18N={
+ru:{sub:'Твой личный киноархив',hi:'Привет, {n} 👋',buff:'Киноман',
+t_home:'Главная',t_feed:'Лента',t_search:'Поиск',t_profile:'Профиль',t_settings:'Настройки',
+v_watched:'Просмотренное',v_want:'Хочу посмотреть',v_tv:'Сейчас смотрю',v_fav:'Избранное',v_stats:'Статистика',v_filters:'Фильтры',watch_d:'Зови друга и смотрите онлайн вместе',stats_d:'Часы, жанры, лучшие оценки',friends_d:'Чат, код дружбы, совместные просмотры',v_friends:'Друзья',
+n_movies:'Фильмов',n_series:'Сериалов',avg_rating:'Средняя оценка',hours:'часов',movies_l:'фильмов',avg_l:'средняя',
+editing:'Редактирование',add_watched:'Добавить просмотренное',movie_title:'Название фильма',photo:'📷 Фото',rating:'Оценка',
+impr_ph:'Впечатления, что посмотрел, мысли…',save:'Сохранить',add:'Добавить',cancel:'Отмена',untitled:'Без названия',
+watched_empty:'Пока пусто. Добавь просмотренное выше или найди фильм через поиск.',
+want_empty:'Список желаемого пуст.',tv_empty:'Добавь сериал и поставь статус «Смотрю».',fav_empty:'Нажми ♥ в карточке фильма.',
+fav_genres:'Любимые жанры',no_data:'Нет данных',top_rated:'Лучшие оценки',csv_hint:'Дневник в CSV: команда /export в чате с ботом',
+search_ph:'Название фильма или сериала',series:'Сериал',movie:'Фильм',
+f_title:'Подбор по фильтрам',f_reset:'Сбросить',f_all:'Фильмы и сериалы',f_movies:'Фильмы',f_series:'Сериалы',f_country:'Любая страна',f_sort_pop:'Сначала популярные',f_sort_rate:'Сначала с высоким рейтингом',f_sort_new:'Сначала новые',f_y1:'Год от',f_y2:'Год до',f_rate:'Любой рейтинг',f_rate_n:'Рейтинг {n}+',f_len_n:'До {n} мин · фильмы',f_none:'Ничего не нашлось. Попробуй смягчить фильтры.',f_more:'Показать ещё',any_genre:'Любой жанр',any_len:'Любая длительность',
+min:'мин',
+
+
+recs_loading:'Подбираю…',recs_from:'Похожее на то, что ты оценил на 8 и выше',recs_none:'Поставь оценку 8 или выше нескольким фильмам, и я подберу похожие.',
+my_code:'Мой код дружбы',copy:'Копировать',copied:'Скопировано ✓',code_hint:'Отправь код другу: он вводит его ниже и вы сразу в друзьях',
+add_by_code:'Добавить по коду',code_ph:'Например K7Q2-M9XA',find:'Найти',invite_link:'Пригласить ссылкой',
+no_friends:'Друзей пока нет. Введи код друга или отправь ему свой.',already_friend:'уже друг',view_profile:'Смотреть профиль',
+share_text:'Давай смотреть кино вместе, у меня киноархив в MY CINEMA. Мой код дружбы: {c}',
+write:'💬 Написать',add_friend:'Добавить в друзья',hidden_title:'🔒 Профиль скрыт',hidden_text:'{n} не показывает свои списки.',
+both_want:'Хотите посмотреть оба',both_seen:'Смотрели оба',advises:'Советует {n}',nothing:'Пока ничего',you_vs:' · ты ★ {a}, {n} ★ {b}',
+msg_ph:'Сообщение…',no_msgs:'Сообщений пока нет. Напиши первым 👋',
+lvl0:'Новичок',lvl1:'Киноман',lvl2:'Эксперт',lvl3:'Легенда',stat_line:'{f} фильмов · {s} сериалов · {h} ч',
+online:'в сети',status_hidden:'статус скрыт',
+prof_privacy:'Приватность профиля',change_settings:'⚙️ Изменить в настройках',
+s_profile:'Профиль',s_name_hint:'Имя, которое видят друзья',s_name_ph:'Твоё имя',s_avatar:'Аватар',s_privacy:'Приватность',
+s_who:'Кто видит твои списки фильмов',s_online:'Показывать, что я в сети',show:'Показывать',hide:'Скрыть',
+s_look:'Оформление',s_theme:'Тема',th_dark:'Тёмная',th_light:'Светлая',s_bg:'Фон',
+bg_aurora:'🌌 Аврора',bg_sunset:'🌇 Закат',bg_ocean:'🌊 Океан',bg_forest:'🌲 Лес',bg_cinema:'🎞 Кино',bg_none:'Без фона',
+s_accent:'Акцентный цвет',s_lists:'Списки',normal:'Обычные',compact:'Компактные',
+s_misc:'Прочее',s_start:'Какой экран открывать при запуске',s_remind:'Напоминания в чате',on_m:'Включены',off_m:'Выключены',
+s_lang:'Язык / Language',
+vis_public:'🌍 Открытый',vis_public_d:'Любой, у кого есть твой код, может смотреть твои списки',
+vis_friends:'👥 Только друзья',vis_friends_d:'Списки видят только друзья',vis_hidden:'🔒 Скрытый',vis_hidden_d:'Никто не видит твои списки',
+feed_loading:'Подбираю ленту…',feed_empty:'Новых подборок пока нет, загляни позже.',f_no:'Не интересно',f_seen:'Смотрел',f_want:'Хочу',f_fav:'Избранное',
+back:'Назад',st_want:'🔖 Хочу',st_watching:'▶ Смотрю',st_watched:'✓ Просмотрено',favorite:'Избранное',progress:'Прогресс',
+season_ph:'Сезон',episode_ph:'Серия',diary:'Дневник',impr:'Впечатления',remove:'Удалить из архива',se_ep:'С{s} Э{e}',
+just_now:'только что',min_ago:'{n} мин назад',h_ago:'{n} ч назад',d_ago:'{n} дн назад',was:'был(а) {t}',offline:'не в сети',
+err_not_found:'Код не найден',err_self:'Это твой собственный код',err_net:'Нет связи с сервером',trailer:'▶ Трейлер',hide_tr:'Скрыть трейлер',where:'Где смотреть',no_prov:'В выбранной стране нигде не найдено',p_stream:'По подписке',p_rent:'Аренда',p_buy:'Покупка',open_jw:'Открыть на JustWatch',jw:'Данные: JustWatch / TMDB',free_now:'Можно смотреть бесплатно',watch_here:'Смотреть здесь',cin_t:'Онлайн-кинотеатры',cin_s:'Откроется страница в сервисе',cin_open_m:'Смотреть фильм',cin_open_t:'Смотреть сериал',cin_none:'В онлайн-кинотеатрах пока не нашли',hide_pl:'Скрыть плеер',p_free:'Бесплатные сервисы',na:'Пока недоступно',na_d:'Бесплатного легального просмотра не нашли. Платные сервисы (подписка, аренда, покупка) в приложении пока недоступны.',ext_t:'Нашёл фильм на Rutube или VK Видео? Вставь ссылку, и он запустится здесь',paste_ph:'Ссылка на Rutube или VK Видео',paste_go:'▶ Смотреть здесь',rv_err:'Не получилось открыть. Нужна ссылка на видео с Rutube или VK Видео.',v_watch:'Смотреть вместе',w_invite:'🎬 Смотреть вместе',w_pick:'Пригласить друга',w_no_friends:'Сначала добавь друзей в разделе «Друзья».',w_invite_from:'{n} зовёт смотреть вместе',w_accept:'Принять',w_active:'Активная сессия',w_open:'Открыть',w_sent_to:'Приглашение отправлено: {n}. Ждём ответа…',w_with:'Сессия с {n}',w_link_ph:'Ссылка на видео',w_set:'Загрузить видео',w_change:'Сменить видео',w_hint:'Вставь любую ссылку: YouTube, VK Видео, Vimeo, Rutube, прямой файл (.mp4, .webm, .m3u8) или страницу сайта, где видео лежит в открытом виде. Netflix, Кинопоиск, Okko и другие платные сервисы встроить нельзя.',w_wait_media:'Ведущий ещё не выбрал видео. Как только он вставит ссылку, появится кнопка готовности.',w_ready:'✓ Я готов смотреть',w_unready:'Отменить готовность',w_you:'Ты',w_ready_st:'готов',w_notready:'не готов',w_both:'Просмотр начнётся, когда согласятся оба.',w_host_ctl:'Ты ведущий: пауза и перемотка действуют на всех.',w_guest_ctl:'Пауза и перемотка идут от {n}.',w_tap:'▶ Нажми, чтобы присоединиться',w_stop_watch:'⏹ Остановить просмотр',w_end:'Завершить сессию',w_end_q:'Завершить сессию для обоих?',w_ended:'Сессия завершена',w_peer_on:'в сессии',w_peer_off:'не на экране сессии',w_embed_err:'Это видео нельзя воспроизвести во встроенном плеере. Выбери другое.',err_unsupported:'Не нашёл видео по этой ссылке. Подойдут YouTube, VK Видео, Vimeo, Rutube, прямая ссылка на файл или страница, где видео лежит в открытом виде.',err_busy_me:'Ты уже участвуешь в активной сессии',err_busy_friend:'У друга уже есть активная сессия',err_state:'Приглашение уже недействительно',err_not_friends:'Вы не друзья',err_nomedia:'Сначала нужно выбрать видео',err_bad:'Что-то пошло не так',err_slow:'Слишком быстро, подожди секунду',c_title:'Чат',fs_enter:'На весь экран',fs_exit:'Свернуть',fs_rot:'Повернуть',fs_chat:'Чат',w_link_t:'Пригласить по ссылке',w_link_b:'🔗 Создать ссылку-приглашение',w_link_hint:'Подходит и тем, кого нет в друзьях: отправь ссылку в любой чат Telegram, по ней человек сразу попадёт в сессию.',w_link_wait:'Ссылка создана. Ждём, пока по ней перейдут…',w_share:'Отправить',w_share_text:'Смотрим вместе в MY CINEMA! Заходи по ссылке 🍿',w_or_friend:'Или позови друга из списка',w_call:'Позвать',w_paste:'Вставить',w_loading:'Ищем видео…',typing:'{n} печатает',photo_lbl:'📷 Фото'},
+en:{sub:'Your personal movie archive',hi:'Hi, {n} 👋',buff:'Movie buff',
+t_home:'Home',t_feed:'Feed',t_search:'Search',t_profile:'Profile',t_settings:'Settings',
+v_watched:'Watched',v_want:'Want to watch',v_tv:'Watching now',v_fav:'Favorites',v_stats:'Statistics',v_filters:'Filters',watch_d:'Invite a friend and watch online together',stats_d:'Hours, genres, top rated',friends_d:'Chat, friend code, watching together',v_friends:'Friends',
+n_movies:'Movies',n_series:'Series',avg_rating:'Average rating',hours:'hours',movies_l:'movies',avg_l:'average',
+editing:'Editing',add_watched:'Add watched',movie_title:'Movie title',photo:'📷 Photo',rating:'Rating',
+impr_ph:'Impressions, what you watched, thoughts…',save:'Save',add:'Add',cancel:'Cancel',untitled:'Untitled',
+watched_empty:'Nothing here yet. Add something above or find a movie via search.',
+want_empty:'Your watchlist is empty.',tv_empty:'Add a series and set its status to “Watching”.',fav_empty:'Tap ♥ on a movie card.',
+fav_genres:'Favorite genres',no_data:'No data',top_rated:'Top rated',csv_hint:'Diary as CSV: use /export in the bot chat',
+search_ph:'Movie or series title',series:'Series',movie:'Movie',
+f_title:'Find by filters',f_reset:'Reset',f_all:'Movies and series',f_movies:'Movies',f_series:'Series',f_country:'Any country',f_sort_pop:'Most popular first',f_sort_rate:'Top rated first',f_sort_new:'Newest first',f_y1:'Year from',f_y2:'Year to',f_rate:'Any rating',f_rate_n:'Rating {n}+',f_len_n:'Up to {n} min · movies',f_none:'Nothing found. Try loosening the filters.',f_more:'Show more',any_genre:'Any genre',any_len:'Any length',
+min:'min',
+
+
+recs_loading:'Finding picks…',recs_from:'Similar to what you rated 8 or higher',recs_none:'Rate a few movies 8 or higher and I will suggest similar ones.',
+my_code:'My friend code',copy:'Copy',copied:'Copied ✓',code_hint:'Send the code to a friend: they enter it below and you are friends right away',
+add_by_code:'Add by code',code_ph:'For example K7Q2-M9XA',find:'Find',invite_link:'Invite by link',
+no_friends:'No friends yet. Enter a friend’s code or send them yours.',already_friend:'already a friend',view_profile:'View profile',
+share_text:'Let’s watch movies together, I keep my movie archive in MY CINEMA. My friend code: {c}',
+write:'💬 Message',add_friend:'Add as friend',hidden_title:'🔒 Profile is hidden',hidden_text:'{n} does not share their lists.',
+both_want:'Both want to watch',both_seen:'Both watched',advises:'{n} recommends',nothing:'Nothing yet',you_vs:' · you ★ {a}, {n} ★ {b}',
+msg_ph:'Message…',no_msgs:'No messages yet. Say hi first 👋',
+lvl0:'Newbie',lvl1:'Movie buff',lvl2:'Expert',lvl3:'Legend',stat_line:'{f} movies · {s} series · {h} h',
+online:'online',status_hidden:'status hidden',
+prof_privacy:'Profile privacy',change_settings:'⚙️ Change in settings',
+s_profile:'Profile',s_name_hint:'Name your friends see',s_name_ph:'Your name',s_avatar:'Avatar',s_privacy:'Privacy',
+s_who:'Who can see your movie lists',s_online:'Show that I am online',show:'Show',hide:'Hide',
+s_look:'Appearance',s_theme:'Theme',th_dark:'Dark',th_light:'Light',s_bg:'Background',
+bg_aurora:'🌌 Aurora',bg_sunset:'🌇 Sunset',bg_ocean:'🌊 Ocean',bg_forest:'🌲 Forest',bg_cinema:'🎞 Cinema',bg_none:'No background',
+s_accent:'Accent color',s_lists:'Lists',normal:'Normal',compact:'Compact',
+s_misc:'Other',s_start:'Screen to open on launch',s_remind:'Reminders in chat',on_m:'On',off_m:'Off',
+s_lang:'Язык / Language',
+vis_public:'🌍 Public',vis_public_d:'Anyone with your code can view your lists',
+vis_friends:'👥 Friends only',vis_friends_d:'Only friends can see your lists',vis_hidden:'🔒 Hidden',vis_hidden_d:'Nobody can see your lists',
+feed_loading:'Loading your feed…',feed_empty:'No new picks right now, check back later.',f_no:'Not interested',f_seen:'Watched',f_want:'Want',f_fav:'Favorite',
+back:'Back',st_want:'🔖 Want',st_watching:'▶ Watching',st_watched:'✓ Watched',favorite:'Favorite',progress:'Progress',
+season_ph:'Season',episode_ph:'Episode',diary:'Diary',impr:'Impressions',remove:'Remove from archive',se_ep:'S{s} E{e}',
+just_now:'just now',min_ago:'{n} min ago',h_ago:'{n} h ago',d_ago:'{n} d ago',was:'last seen {t}',offline:'offline',
+err_not_found:'Code not found',err_self:'This is your own code',err_net:'No connection to the server',trailer:'▶ Trailer',hide_tr:'Hide trailer',where:'Where to watch',no_prov:'Not found anywhere in the selected country',p_stream:'Subscription',p_rent:'Rent',p_buy:'Buy',open_jw:'Open on JustWatch',jw:'Data: JustWatch / TMDB',free_now:'Free to watch',watch_here:'Watch here',cin_t:'Online cinemas',cin_s:'Opens the title page',cin_open_m:'Watch movie',cin_open_t:'Watch series',cin_none:'Not found in online cinemas yet',hide_pl:'Hide player',p_free:'Free services',na:'Not available yet',na_d:'No free legal source found. Paid services (subscription, rent, buy) are not available in the app yet.',ext_t:'Found it on Rutube or VK Video? Paste the link and it plays here',paste_ph:'Rutube or VK Video link',paste_go:'▶ Watch here',rv_err:'Could not open it. Paste a link to a Rutube or VK Video video.',v_watch:'Watch together',w_invite:'🎬 Watch together',w_pick:'Invite a friend',w_no_friends:'Add friends in the “Friends” section first.',w_invite_from:'{n} invites you to watch together',w_accept:'Accept',w_active:'Active session',w_open:'Open',w_sent_to:'Invitation sent to {n}. Waiting for a reply…',w_with:'Session with {n}',w_link_ph:'Video link',w_set:'Load video',w_change:'Change video',w_hint:'Paste any link: YouTube, VK Video, Vimeo, Rutube, a direct file (.mp4, .webm, .m3u8) or a web page with an openly hosted video. Netflix and other paid services cannot be embedded.',w_wait_media:'The host has not picked a video yet. A ready button will appear once they paste a link.',w_ready:'✓ I am ready',w_unready:'Cancel ready',w_you:'You',w_ready_st:'ready',w_notready:'not ready',w_both:'Playback starts when both of you agree.',w_host_ctl:'You are the host: pause and seek apply to everyone.',w_guest_ctl:'Pause and seek are controlled by {n}.',w_tap:'▶ Tap to join',w_stop_watch:'⏹ Stop watching',w_end:'End session',w_end_q:'End the session for both?',w_ended:'Session ended',w_peer_on:'in session',w_peer_off:'not on the session screen',w_embed_err:'This video cannot be played in the embedded player. Pick another one.',err_unsupported:'Could not find a video at this link. Use YouTube, VK Video, Vimeo, Rutube, a direct file link or a page with an openly hosted video.',err_busy_me:'You are already in an active session',err_busy_friend:'Your friend already has an active session',err_state:'This invitation is no longer valid',err_not_friends:'You are not friends',err_nomedia:'Pick a video first',err_bad:'Something went wrong',err_slow:'Too fast, wait a second',c_title:'Chat',fs_enter:'Fullscreen',fs_exit:'Exit fullscreen',fs_rot:'Rotate',fs_chat:'Chat',w_link_t:'Invite by link',w_link_b:'🔗 Create invite link',w_link_hint:'Works even for people who are not your friends: send the link to any Telegram chat and they join the session right away.',w_link_wait:'Link created. Waiting for someone to open it…',w_share:'Share',w_share_text:'Let’s watch together in MY CINEMA! Join via the link 🍿',w_or_friend:'Or invite a friend from your list',w_call:'Invite',w_paste:'Paste',w_loading:'Looking for the video…',typing:'{n} is typing',photo_lbl:'📷 Photo'}};
+
+let S={accent:'#e9b872',theme:'dark',avatar:'🎬',name:'',compact:false,start:'home',bg:'aurora',lang:'ru',region:'EE'};
+try{Object.assign(S,JSON.parse(localStorage.getItem('mc')||'{}'))}catch(e){}
+if(S.start=='notes')S.start='watched';
+if(S.theme=='amoled')S.theme='dark';
+if(!I18N[S.lang])S.lang='ru';
+const tr=(k,v)=>{let s=I18N[S.lang][k];if(s===undefined)s=I18N.ru[k]??k;return v?s.replace(/\{(\w+)\}/g,(_,x)=>v[x]??''):s};
+const saveS=()=>{try{localStorage.setItem('mc',JSON.stringify(S))}catch(e){}};
+function applyS(){const r=document.documentElement;r.dataset.theme=S.theme;r.style.setProperty('--go',S.accent);r.dataset.dens=S.compact?'c':'';r.dataset.bg=S.bg;r.lang=S.lang}
+function setS(k,v){S[k]=v;saveS();applyS();render()}
+applyS();
+Object.assign(I18N.ru,{login_in:'Войти',login_up:'Регистрация',login_name:'Логин',login_pass:'Пароль',login_pass_new:'Пароль (от 8 символов)',login_fill:'Введи логин и пароль',
+ login_err_bad_login:'Логин: 3–24 символа, латиница, цифры, _ . -',login_err_bad_pass:'Пароль должен быть от 8 символов',login_err_taken:'Такой логин уже занят',login_err_bad_creds:'Неверный логин или пароль',login_err_slow:'Слишком много попыток, подожди немного',login_err_net:'Нет связи с сервером',logout:'Выйти из аккаунта'});
+Object.assign(I18N.en,{login_in:'Sign in',login_up:'Sign up',login_name:'Username',login_pass:'Password',login_pass_new:'Password (8+ characters)',login_fill:'Enter username and password',
+ login_err_bad_login:'Username: 3–24 chars, Latin letters, digits, _ . -',login_err_bad_pass:'Password must be at least 8 characters',login_err_taken:'This username is already taken',login_err_bad_creds:'Wrong username or password',login_err_slow:'Too many attempts, wait a bit',login_err_net:'No connection to the server',logout:'Sign out'});
+const TABS=['home','feed','search','profile','settings'],ICON={home:'🏠',feed:'🔥',search:'🔍',profile:'👤',settings:'⚙️'};
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s),app=$('#app');
+const TK='mc_token',getTok=()=>{try{return localStorage.getItem(TK)||''}catch(e){return''}};
+const api=(p,o)=>{if(!IN_TG&&!getTok())return Promise.resolve({error:'auth'});
+  return fetch('/api/'+p,{headers:{'X-Init':tg.initData,'X-Token':IN_TG?'':getTok(),'Content-Type':'application/json'},...o})
+  .then(r=>{if(r.status===401&&!IN_TG){try{localStorage.removeItem(TK)}catch(e){}showLogin();return{error:'auth'}}return r.json()}).catch(()=>({error:'net'}))};
+let loginMode='in';
+function showLogin(){
+  let d=$('#login');if(!d){d=document.createElement('div');d.id='login';document.body.appendChild(d)}
+  const reg=loginMode=='up';
+  d.innerHTML=`<div class="box"><div class="lg0">🎬</div><h1>MY CINEMA</h1><p class="mu">${tr('sub')}</p>
+  <div class="wrap" style="justify-content:center"><button class="ghost ${reg?'':'on'}" data-m="in">${tr('login_in')}</button><button class="ghost ${reg?'on':''}" data-m="up">${tr('login_up')}</button></div>
+  <input id="lgn" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="24" placeholder="${tr('login_name')}">
+  <input id="lgp" type="password" autocomplete="${reg?'new-password':'current-password'}" maxlength="128" placeholder="${tr(reg?'login_pass_new':'login_pass')}">
+  <p class="mu" id="lge" style="color:#ff6b6b;min-height:20px;margin:0 0 8px"></p>
+  <button class="go" id="lgb" style="width:100%">${tr(reg?'login_up':'login_in')}</button></div>`;
+  d.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{loginMode=b.dataset.m;showLogin()});
+  const go=async()=>{const l=$('#lgn').value.trim(),p=$('#lgp').value,er=$('#lge');er.textContent='';
+    if(!l||!p){er.textContent=tr('login_fill');return}
+    $('#lgb').disabled=true;
+    const r=await fetch('/api/auth/'+(reg?'register':'login'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:l,password:p})}).then(r=>r.json()).catch(()=>({error:'net'}));
+    $('#lgb').disabled=false;
+    if(r.token){try{localStorage.setItem(TK,r.token)}catch(e){}location.reload()}
+    else er.textContent=tr('login_err_'+(r.error||'net'))};
+  $('#lgb').onclick=go;d.querySelectorAll('input').forEach(i=>i.onkeydown=e=>{if(e.key=='Enter')go()})}
+async function logout(){await fetch('/api/auth/logout',{method:'POST',headers:{'X-Token':getTok()}}).catch(()=>{});try{localStorage.removeItem(TK)}catch(e){}location.reload()}
+const post=(p,b)=>api(p,{method:'POST',body:JSON.stringify(b)});
+const MOODS=['😍','😂','😢','🤯','😴','😡'];
+let SF={type:'',g:'',c:'',y1:'',y2:'',rate:'',len:'',sort:'pop'},SQ='',items=[],view='home',cur=null,fid,fname,ME0={},fFriend=false,chatT,subK='sub',subRaw=null,notesC=null,feedQ=[],feedLoad=null;const feedDone=new Set();
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* Постеры нужного размера: в списках 60×90 px, раньше везде грузился w342 */
+const px=(u,s)=>u?u.replace(/\/w\d+\//,'/'+s+'/'):'';
+const poster=(i,s='w154')=>i.poster?`<img src="${px(i.poster,s)}" loading="lazy" decoding="async">`:'<div class="ph"></div>';
+const key=i=>i.tid+i.type;
+const WREG={};   // карточки, из которых можно сразу запустить плеер
+const wb=i=>{WREG[key(i)]=i;return`<button class="wbtn" data-w="${key(i)}" title="${tr('watch_here')}" aria-label="${tr('watch_here')}">▶</button>`};
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.wbtn');if(!b)return;
+  e.stopPropagation();e.preventDefault();const i=WREG[b.dataset.w];if(i)openItem(i,{play:true})},true);
+const find=(tid,type)=>items.find(i=>i.tid==tid&&i.type==type);
+async function loadItems(){const r=await api('items');if(Array.isArray(r))items=r}
+async function load(){const[,m]=await Promise.all([loadItems(),api('me')]);if(m&&!m.error)ME0=m}
+async function getNotes(){if(notesC)return notesC;const n=await api('notes');if(Array.isArray(n)){notesC=n;return n}return[]}
+const VIS=()=>({public:[tr('vis_public'),tr('vis_public_d')],friends:[tr('vis_friends'),tr('vis_friends_d')],hidden:[tr('vis_hidden'),tr('vis_hidden_d')]});
+const fmtCode=c=>c?c.slice(0,4)+'-'+c.slice(4):'';
+const ago=ts=>{const m=Math.floor((Date.now()/1000-ts)/60);return m<1?tr('just_now'):m<60?tr('min_ago',{n:m}):m<1440?tr('h_ago',{n:Math.floor(m/60)}):tr('d_ago',{n:Math.floor(m/1440)})};
+const onl=f=>f.online?`<span class="dot"></span>${tr('online')}`:f.seen?'<span class="dot off"></span>'+tr('was',{t:ago(f.seen)}):`<span class="dot off"></span>${tr('offline')}`;
+const hm=ts=>new Date(ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+const copyCode=(btn,c)=>{try{navigator.clipboard.writeText(c);btn.textContent=tr('copied')}catch(e){tg.showAlert?tg.showAlert(c):alert(c)}};
+const errText=r=>tr('err_'+(r.error||'net'));
+
+function paint(){$('#sub').textContent=subRaw??tr(subK);tabs()}
+function nav(v,k,raw){clearInterval(chatT);sessStop();view=v;subK=k||'sub';subRaw=raw||null;$('#back').style.display=TABS.includes(v)?'none':'block';paint();
+  app.classList.add('n');setTimeout(()=>app.classList.remove('n'),350);render();banner();scrollTo(0,0)}
+function tabs(){$('#tabs').innerHTML=TABS.map(k=>`<button class="${view==k?'on':''}" data-t="${k}"><span>${ICON[k]}</span>${tr('t_'+k)}</button>`).join('');$$('[data-t]').forEach(b=>b.onclick=()=>nav(b.dataset.t))}
+$('#back').onclick=()=>view=='session'?nav('watch','v_watch'):nav(view=='friend'||view=='chat'?'friends':view=='friends'||view=='stats'?'profile':view=='filters'?'search':'home');
+
+function stats(){
+  const w=items.filter(i=>i.status=='watched'),r=w.filter(i=>i.rating);
+  const mins=w.reduce((a,i)=>a+(i.runtime||0)*(i.type=='movie'?1:Math.max(1,i.episode||1)),0);
+  const g={};w.forEach(i=>(i.genres||'').split(', ').filter(Boolean).forEach(x=>g[x]=(g[x]||0)+1));
+  return{films:w.filter(i=>i.type=='movie').length,tv:items.filter(i=>i.type=='tv'&&i.status!='want').length,
+    avg:r.length?(r.reduce((a,i)=>a+i.rating,0)/r.length).toFixed(1):'–',hours:Math.round(mins/60),
+    top:Object.entries(g).sort((a,b)=>b[1]-a[1]).slice(0,5),r}
+}
+const irow=i=>`<div class="row" data-k="${key(i)}">${poster(i)}<div><div class="t">${esc(i.title)}</div>
+<div class="m">${esc(i.year)} · ${esc(i.genres)}</div><div class="m">${i.rating?`<span class="badge">★ ${i.rating}</span> `:''}${i.mood||''} ${i.fav?'♥':''}${i.type=='tv'&&i.status!='want'?' · '+tr('se_ep',{s:i.season,e:i.episode}):''}</div></div>${wb(i)}</div>`;
+function list(arr,empty){return arr.length?`<div class="list">${arr.map(irow).join('')}</div>`:`<p class="mu">${empty}</p>`}
+function bind(){$$('[data-k]').forEach(e=>e.onclick=()=>{const i=items.find(x=>key(x)==e.dataset.k);if(i)openItem(i)})}
+const blank=()=>({id:0,title:'',text:'',rating:0,photo:'',pc:false});let nd=blank();
+
+const GEN=[['Боевик','Action',28,10759],['Приключения','Adventure',12,10759],['Анимация','Animation',16,16],['Комедия','Comedy',35,35],['Криминал','Crime',80,80],['Документальный','Documentary',99,99],['Драма','Drama',18,18],['Семейный','Family',10751,10751],['Фэнтези','Fantasy',14,10765],['Фантастика','Sci-Fi',878,10765],['Детектив','Mystery',9648,9648],['Военный','War',10752,10768],['Вестерн','Western',37,37],['Ужасы','Horror',27,0],['Триллер','Thriller',53,0],['Мелодрама','Romance',10749,0],['История','History',36,0],['Музыка','Music',10402,0]];
+const CTR=[['RU','Россия','Russia'],['US','США','USA'],['GB','Великобритания','United Kingdom'],['FR','Франция','France'],['DE','Германия','Germany'],['IT','Италия','Italy'],['ES','Испания','Spain'],['JP','Япония','Japan'],['KR','Южная Корея','South Korea'],['CN','Китай','China'],['IN','Индия','India'],['SE','Швеция','Sweden'],['DK','Дания','Denmark'],['PL','Польша','Poland'],['TR','Турция','Turkey'],['UA','Украина','Ukraine']];
+const srow=i=>`<div class="row" data-s="${key(i)}">${poster(i)}<div><div class="t">${esc(i.title)}</div><div class="m">${i.type=='tv'?tr('series'):tr('movie')} · ${esc(i.year)} · ★ ${i.vote}</div>${i.overview?`<div class="m">${esc(i.overview.slice(0,90))}…</div>`:''}</div>${wb(i)}</div>`;
+const VIEWS={
+home(){
+  app.innerHTML=`<button class="big" data-v="watch"><span class="ic">🍿</span><span class="tx"><b>${tr('v_watch')}</b><small>${tr('watch_d')}</small></span><span class="ar">›</span></button>
+<h2>${tr('hi',{n:esc(ME0.nick||S.name||ME0.name||tg.initDataUnsafe?.user?.first_name||tr('buff').toLowerCase())})}</h2><div class="grid">
+${[['watched','🎞'],['want','🔖'],['tv','📺'],['fav','⭐']].map(a=>`<button class="tile" data-v="${a[0]}"><b>${a[1]}</b>${tr('v_'+a[0])}</button>`).join('')}</div>`;
+  $$('[data-v]').forEach(b=>b.onclick=()=>nav(b.dataset.v,'v_'+b.dataset.v))},
+watched(){getNotes().then(n=>{if(view!='watched')return;const f=nd;
+  const w=items.filter(i=>i.status=='watched').map(i=>({d:i.date||'',i})).concat(n.map(x=>({d:x.created||'',x})))
+    .sort((p,q)=>q.d.localeCompare(p.d)||(q.x&&p.x?q.x.id-p.x.id:0));
+  const noteCard=x=>`<div class="sec"><div style="display:flex;gap:12px">${x.photo?`<img src="${x.photo}" style="width:64px;height:96px;object-fit:cover;border-radius:10px;flex:none">`:''}<div style="flex:1;min-width:0"><div class="hd" style="margin-bottom:4px"><b>${esc(x.title||tr('untitled'))}</b>${x.rating?`<span class="badge">★ ${x.rating}</span>`:''}</div><div class="mu">${esc(x.created)}</div><div style="white-space:pre-wrap;margin-top:6px">${esc(x.text)}</div></div></div><div style="text-align:right;margin-top:8px"><button class="ghost" data-we="${x.id}">✎</button> <button class="ghost" data-wd="${x.id}">✕</button></div></div>`;
+  app.innerHTML=`<div class="sec"><h2>${f.id?tr('editing'):tr('add_watched')}</h2><input id="wtt" placeholder="${tr('movie_title')}" value="${esc(f.title)}">
+<div class="wrap" style="align-items:center"><label class="ghost" style="cursor:pointer">${tr('photo')}<input id="wph" type="file" accept="image/*" hidden></label>${f.photo?`<img src="${f.photo}" style="width:60px;height:90px;object-fit:cover;border-radius:10px"><button class="ghost" id="wrp">✕</button>`:''}</div>
+<div class="mu" style="margin-bottom:8px">${tr('rating')} ${f.rating?'· '+f.rating:''}</div><div class="wrap">${[1,2,3,4,5,6,7,8,9,10].map(x=>`<button class="ghost ${f.rating==x?'on':''}" data-wr="${x}">${x}</button>`).join('')}</div>
+<textarea id="wt" rows="3" placeholder="${tr('impr_ph')}">${esc(f.text)}</textarea>
+<button class="go" id="wa" style="width:100%">${f.id?tr('save'):tr('add')}</button>${f.id?`<button class="ghost" id="wc" style="width:100%;margin-top:8px">${tr('cancel')}</button>`:''}</div>
+<div class="list">${w.map(e=>e.x?noteCard(e.x):irow(e.i)).join('')||`<p class="mu">${tr('watched_empty')}</p>`}</div>`;
+  bind();
+  const keep=()=>{nd.title=$('#wtt').value;nd.text=$('#wt').value};
+  $('#wph').onchange=async e=>{if(e.target.files[0]){keep();nd.photo=await shrink(e.target.files[0]);nd.pc=true;render()}};
+  if($('#wrp'))$('#wrp').onclick=()=>{keep();nd.photo='';nd.pc=true;render()};
+  $$('[data-wr]').forEach(b=>b.onclick=()=>{keep();nd.rating=nd.rating==+b.dataset.wr?0:+b.dataset.wr;render()});
+  $('#wa').onclick=async()=>{keep();if(!nd.title.trim()&&!nd.text.trim())return;
+    await post('notes',{id:nd.id||undefined,title:nd.title.trim(),text:nd.text,rating:nd.rating||null,photo:nd.pc?nd.photo:undefined});notesC=null;nd=blank();render()};
+  if($('#wc'))$('#wc').onclick=()=>{nd=blank();render()};
+  $$('[data-wd]').forEach(b=>b.onclick=async()=>{await post('notes/delete',{id:+b.dataset.wd});notesC=null;render()});
+  $$('[data-we]').forEach(b=>b.onclick=()=>{const x=n.find(y=>y.id==b.dataset.we);nd={id:x.id,title:x.title||'',text:x.text||'',rating:x.rating||0,photo:x.photo||'',pc:false};render();scrollTo(0,0)})})},
+want(){app.innerHTML=list(items.filter(i=>i.status=='want'),tr('want_empty'));bind()},
+tv(){app.innerHTML=list(items.filter(i=>i.type=='tv'&&i.status!='want'),tr('tv_empty'));bind()},
+fav(){app.innerHTML=list(items.filter(i=>i.fav),tr('fav_empty'));bind()},
+stats(){const s=stats();
+  app.innerHTML=`<div class="stats"><div><b>${s.hours}</b><span class="mu">${tr('hours')}</span></div><div><b>${s.films}</b><span class="mu">${tr('movies_l')}</span></div><div><b>${s.avg}</b><span class="mu">${tr('avg_l')}</span></div></div>
+<div class="sec"><h2>${tr('fav_genres')}</h2>${s.top.map(([g,n])=>`<div class="mu">${esc(g)} — ${n}</div><div class="bar"><i style="width:${n/s.top[0][1]*100}%"></i></div>`).join('')||`<p class="mu">${tr('no_data')}</p>`}</div>
+<div class="sec"><h2>${tr('top_rated')}</h2>${list(s.r.sort((a,b)=>b.rating-a.rating).slice(0,5),'')}</div><p class="mu">${tr('csv_hint')}</p>`;bind()},
+search(){
+  app.innerHTML=`<input id="q" placeholder="${tr('search_ph')}" value="${esc(SQ)}">
+<button class="ghost" id="rd" style="width:100%;margin-bottom:12px">🎛 ${tr('v_filters')}</button><div id="res"></div>`;
+  const res=$('#res');let tm,seq=0,acc=[];
+  const draw=(r,empty)=>{res.innerHTML=r.length?`<div class="list">${r.map(srow).join('')}</div>`:`<p class="mu">${empty}</p>`;
+    res.querySelectorAll('[data-s]').forEach(e=>e.onclick=()=>openItem(acc.find(x=>key(x)==e.dataset.s)))};
+  const go=()=>{const v=SQ.trim(),my=++seq;
+    api(v.length>1?'search?q='+encodeURIComponent(v):'trending').then(r=>{if(my==seq&&Array.isArray(r)){acc=r;draw(r,tr('nothing'))}})};
+  $('#rd').onclick=()=>nav('filters','v_filters');
+  $('#q').oninput=e=>{SQ=e.target.value;clearTimeout(tm);tm=setTimeout(go,400)};
+  go()},
+filters(){
+  const L=S.lang=='ru'?0:1,CL=S.lang=='ru'?1:2;
+  const opts=(a,v)=>a.map(([k,l])=>`<option value="${k}" ${String(v)==String(k)?'selected':''}>${esc(l)}</option>`).join('');
+  app.innerHTML=`<div class="sec" id="flt"><div class="hd" style="margin:0"><b>${tr('f_title')}</b><button class="ghost" id="fr">${tr('f_reset')}</button></div>
+<div class="fg">
+<select id="ft">${opts([['',tr('f_all')],['movie',tr('f_movies')],['tv',tr('f_series')]],SF.type)}</select>
+<select id="fg">${opts([['',tr('any_genre')],...GEN.map((g,i)=>[i,g[L]])],SF.g)}</select>
+<select id="fc">${opts([['',tr('f_country')],...CTR.map(c=>[c[0],c[CL]])],SF.c)}</select>
+<select id="fo">${opts([['pop',tr('f_sort_pop')],['rate',tr('f_sort_rate')],['new',tr('f_sort_new')]],SF.sort)}</select>
+<input id="y1" type="number" inputmode="numeric" min="1900" max="2100" placeholder="${tr('f_y1')}" value="${esc(SF.y1)}">
+<input id="y2" type="number" inputmode="numeric" min="1900" max="2100" placeholder="${tr('f_y2')}" value="${esc(SF.y2)}">
+<select id="fv">${opts([['',tr('f_rate')],[6,tr('f_rate_n',{n:6})],[7,tr('f_rate_n',{n:7})],[8,tr('f_rate_n',{n:8})]],SF.rate)}</select>
+<select id="fl" ${SF.type=='tv'?'disabled':''}>${opts([['',tr('any_len')],[90,tr('f_len_n',{n:90})],[120,tr('f_len_n',{n:120})],[150,tr('f_len_n',{n:150})]],SF.len)}</select>
+</div></div><div id="res"></div>`;
+  const res=$('#res');let tm,seq=0,acc=[],page=1;
+  const isDef=()=>!SF.type&&SF.g===''&&!SF.c&&!SF.y1&&!SF.y2&&!SF.rate&&!SF.len&&SF.sort=='pop';
+  const draw=(r,more,empty)=>{
+    res.innerHTML=r.length?`<div class="list">${r.map(srow).join('')}</div>${more?`<button class="ghost" id="mr" style="width:100%;margin-top:12px">${tr('f_more')}</button>`:''}`:`<p class="mu">${empty}</p>`;
+    res.querySelectorAll('[data-s]').forEach(e=>e.onclick=()=>openItem(acc.find(x=>key(x)==e.dataset.s)));
+    if($('#mr'))$('#mr').onclick=()=>runF(page+1)};
+  const runF=p=>{const my=++seq,g=GEN[SF.g],qs=new URLSearchParams({sort:SF.sort,page:p});page=p;
+    if(SF.type)qs.set('type',SF.type);if(g){qs.set('gm',g[2]);if(g[3])qs.set('gt',g[3])}
+    if(SF.c)qs.set('country',SF.c);if(SF.y1)qs.set('y1',SF.y1);if(SF.y2)qs.set('y2',SF.y2);if(SF.rate)qs.set('rate',SF.rate);if(SF.len&&SF.type!='tv')qs.set('max',SF.len);
+    if(p==1)res.innerHTML=`<p class="mu">${tr('feed_loading')}</p>`;
+    api('discover?'+qs).then(r=>{if(my!=seq||!Array.isArray(r))return;
+      if(p==1)acc=[];const have=new Set(acc.map(key));acc.push(...r.filter(x=>!have.has(key(x))));draw(acc,r.length>0,tr('f_none'))})};
+  const go=()=>{const my=++seq;
+    if(isDef())api('trending').then(r=>{if(my==seq&&Array.isArray(r)){acc=r;draw(r,false,tr('nothing'))}});
+    else runF(1)};
+  const bindSel=(id,k)=>{$(id).onchange=e=>{SF[k]=e.target.value;if(k=='type'){if(SF.type=='tv')SF.len='';render();return}go()}};
+  bindSel('#ft','type');bindSel('#fg','g');bindSel('#fc','c');bindSel('#fo','sort');bindSel('#fv','rate');bindSel('#fl','len');
+  [['#y1','y1'],['#y2','y2']].forEach(([id,k])=>$(id).oninput=e=>{SF[k]=e.target.value.replace(/\D/g,'').slice(0,4);clearTimeout(tm);tm=setTimeout(()=>{if(!SF[k]||SF[k].length==4)go()},600)});
+  $('#fr').onclick=()=>{SF={type:'',g:'',c:'',y1:'',y2:'',rate:'',len:'',sort:'pop'};render()};
+  go()},
+recs(){app.innerHTML=`<p class="mu">${tr('recs_loading')}</p>`;api('recs').then(r=>{if(view!='recs')return;app.innerHTML=r.seeds?`<p class="mu" style="margin-bottom:10px">${tr('recs_from')}</p><div id="rl"></div>`:`<p class="mu">${tr('recs_none')}</p>`;if(r.seeds)cards($('#rl'),r.items)})},
+friends(){api('friends').then(f=>{if(view!='friends'||!Array.isArray(f))return;const me=ME0;
+  app.innerHTML=`<div class="sec"><div class="hd"><b>${tr('my_code')}</b><button class="ghost" id="cc">${tr('copy')}</button></div><div class="code">${fmtCode(me.code)}</div><div class="mu">${tr('code_hint')}</div><button class="ghost" id="iv" style="width:100%;margin-top:12px">${tr('invite_link')}</button></div>
+<div class="sec"><h2>${tr('add_by_code')}</h2><input id="fc" placeholder="${tr('code_ph')}" maxlength="12" autocapitalize="characters"><button class="go" id="fb" style="width:100%">${tr('find')}</button><div id="fo" style="margin-top:10px"></div></div>
+${f.length?`<div class="list">${f.map(x=>`<div class="row" data-f="${x.uid}" style="align-items:center;padding:12px"><div class="av s">${esc(x.avatar)}</div><div style="flex:1;min-width:0"><div class="t">${esc(x.name||tr('buff'))}</div><div class="m">${onl(x)}</div></div>${x.unread?`<span class="badge">${x.unread}</span>`:''}<button class="ghost" data-w="${x.uid}">🎬</button> <button class="ghost" data-c="${x.uid}">💬</button></div>`).join('')}</div>`:`<p class="mu">${tr('no_friends')}</p>`}`;
+  $('#cc').onclick=e=>copyCode(e.target,me.code);
+  $('#iv').onclick=async()=>{const iv=await api('invite');if(iv.link)tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(iv.link)+'&text='+encodeURIComponent(tr('share_text',{c:fmtCode(me.code)})))};
+  $('#fb').onclick=async()=>{const code=$('#fc').value.trim();if(!code)return;const r=await api('lookup?code='+encodeURIComponent(code));
+    if(r.error){$('#fo').innerHTML=`<p class="mu">${errText(r)}</p>`;return}
+    $('#fo').innerHTML=`<div class="row" style="align-items:center;cursor:default"><div class="av s">${esc(r.avatar)}</div><div style="flex:1;min-width:0"><div class="t">${esc(r.name||tr('buff'))}</div><div class="m">${onl(r)} · ${VIS()[r.vis][0]}</div></div>${r.friend?`<span class="mu">${tr('already_friend')}</span>`:`<button class="go" id="ad">${tr('add')}</button>`}</div>${r.vis=='public'?`<button class="ghost" id="pv" style="width:100%;margin-top:8px">${tr('view_profile')}</button>`:''}`;
+    if($('#ad'))$('#ad').onclick=async()=>{const a=await post('friends/add',{code});if(a.error)$('#fo').innerHTML=`<p class="mu">${errText(a)}</p>`;else render()};
+    if($('#pv'))$('#pv').onclick=()=>{fid=r.uid;fname=r.name||tr('buff');fFriend=r.friend;nav('friend',null,fname)}};
+  $$('[data-c]').forEach(b=>b.onclick=e=>{e.stopPropagation();fid=b.dataset.c;const x=f.find(y=>y.uid==fid);fname=x.name||tr('buff');nav('chat',null,fname)});
+  $$('[data-w]').forEach(b=>b.onclick=e=>{e.stopPropagation();inviteTo(b.dataset.w)});
+  $$('[data-f]').forEach(e=>e.onclick=()=>{fid=e.dataset.f;const x=f.find(y=>y.uid==fid);fname=x.name||tr('buff');fFriend=true;nav('friend',null,fname)})})},
+friend(){api('friend/items?fid='+fid).then(fi=>{if(view!='friend')return;
+  const act=fFriend?`<button class="go" id="gc" style="width:100%;margin-bottom:12px">${tr('write')}</button><button class="ghost" id="gw" style="width:100%;margin-bottom:12px">${tr('w_invite')}</button>`:`<button class="go" id="ga" style="width:100%;margin-bottom:12px">${tr('add_friend')}</button>`;
+  const bindAct=()=>{if($('#gc'))$('#gc').onclick=()=>nav('chat',null,fname);if($('#gw'))$('#gw').onclick=()=>inviteTo(fid);if($('#ga'))$('#ga').onclick=async()=>{const a=await post('friends/add',{uid:+fid});if(!a.error){fFriend=true;render()}}};
+  if(!Array.isArray(fi)){app.innerHTML=act+`<div class="sec"><h2>${tr('hidden_title')}</h2><p class="mu">${tr('hidden_text',{n:esc(fname)})}</p></div>`;bindAct();return}
+  const mine=k=>items.find(i=>key(i)==k);
+  const both=fi.filter(x=>x.status=='want'&&mine(key(x))?.status=='want');
+  const seen=fi.filter(x=>x.status=='watched'&&mine(key(x))?.status=='watched');
+  const rec=fi.filter(x=>x.rating>=8&&!mine(key(x)));
+  const blk=(t,a,fn)=>`<div class="sec"><h2>${t}</h2>${a.length?`<div class="list">${a.map(fn).join('')}</div>`:`<p class="mu">${tr('nothing')}</p>`}</div>`;
+  const row=(x,m)=>`<div class="row" data-g="${key(x)}">${poster(x)}<div><div class="t">${esc(x.title)}</div><div class="m">${esc(x.year)}${m||''}</div></div>${wb({tid:x.tid,type:x.type,title:x.title,year:x.year,poster:x.poster,genres:x.genres,runtime:x.runtime})}</div>`;
+  app.innerHTML=act+blk(tr('both_want'),both,x=>row(x))+blk(tr('both_seen'),seen,x=>row(x,tr('you_vs',{a:mine(key(x)).rating||'–',n:esc(fname),b:x.rating||'–'})))+blk(tr('advises',{n:esc(fname)}),rec,x=>row(x,` · ★ ${x.rating}`));
+  bindAct();
+  $$('[data-g]').forEach(e=>e.onclick=()=>{const x=fi.find(y=>key(y)==e.dataset.g);openItem({tid:x.tid,type:x.type,title:x.title,year:x.year,poster:x.poster,genres:x.genres,runtime:x.runtime})})})},
+chat(){
+  app.innerHTML=`<div class="sec" style="padding:10px 14px"><div class="hd" style="margin:0"><b>${esc(fname)}</b><span style="display:flex;align-items:center;gap:8px"><span class="mu" id="cst"></span><button class="ghost" id="cw" title="${tr('w_invite')}">🍿</button></span></div></div><div class="msgs" id="ms"></div><div class="comp"><input id="ci" placeholder="${tr('msg_ph')}" maxlength="1000" autocomplete="off"><button class="go" id="csd">➤</button></div>`;
+  let last=0,busy=false;const ms=$('#ms');
+  const poll=async first=>{if(view!='chat'||busy||(document.hidden&&!first))return;busy=true;   // в фоне не опрашиваем
+    try{const r=await api('chat?fid='+fid+'&after='+last);if(view!='chat'||!r.msgs)return;
+      const end=first||innerHeight+scrollY>=document.body.scrollHeight-140;
+      const fr=document.createDocumentFragment();
+      r.msgs.forEach(m=>{const d=document.createElement('div');d.className='msg'+(m.me?' me':'');d.innerHTML=`${esc(m.text)}<small>${hm(m.ts)}</small>`;fr.appendChild(d);last=m.id});
+      const p=ms.querySelector('p');if(p&&r.msgs.length)p.remove();
+      ms.appendChild(fr);
+      $('#cst').innerHTML=onl(r.friend);
+      if(!last&&first)ms.innerHTML=`<p class="mu">${tr('no_msgs')}</p>`;
+      if(r.msgs.length&&end)scrollTo(0,document.body.scrollHeight)}finally{busy=false}};
+  poll(true);chatT=setInterval(poll,3000);
+  const send=async()=>{const t=$('#ci').value.trim();if(!t)return;$('#ci').value='';const p=ms.querySelector('p');if(p)p.remove();await post('chat',{fid:+fid,text:t});poll()};
+  $('#csd').onclick=send;$('#ci').onkeydown=e=>{if(e.key=='Enter')send()};$('#cw').onclick=()=>inviteTo(fid)},
+feed(){feedRender()},
+profile(){const me=ME0,s=stats(),lv=s.films+s.tv,L=tr('lvl'+(lv<5?0:lv<20?1:lv<50?2:3));
+  app.innerHTML=`<div class="prof"><div class="av">${esc(me.avatar||'🎬')}</div><div><div style="font-size:20px;font-weight:700">${esc(me.nick||me.name||tr('buff'))}</div><div class="badge">${L}</div><div class="mu">${tr('stat_line',{f:s.films,s:s.tv,h:s.hours})}</div><div class="mu" style="margin-top:2px">${me.show_online?`<span class="dot"></span>${tr('online')}`:`<span class="dot off"></span>${tr('status_hidden')}`}</div></div></div>
+<button class="nb" id="pst"><span class="ic">📈</span><span class="tx"><b>${tr('v_stats')}</b><small>${tr('stats_d')}</small></span><span class="ar">›</span></button>
+<button class="nb" id="frs"><span class="ic">👥</span><span class="tx"><b>${tr('v_friends')}</b><small>${tr('friends_d')}</small></span><span id="fcn" class="badge"></span><span class="ar">›</span></button>`;
+  $('#pst').onclick=()=>nav('stats','v_stats');$('#frs').onclick=()=>nav('friends','v_friends');
+  api('friends').then(f=>{if(view!='profile'||!Array.isArray(f)||!$('#fcn'))return;const u=f.reduce((a,x)=>a+(x.unread||0),0);$('#fcn').innerHTML=(f.length||'')+(u?` +${u}`:'')})},
+settings(){const me=ME0;
+  const ch=(k,a)=>`<div class="wrap">${a.map(x=>`<button class="ghost ${String(S[k])==x[0]?'on':''}" data-k="${k}" data-v="${x[0]}">${x[1]}</button>`).join('')}</div>`;
+  app.innerHTML=`<div class="sec"><h2>${tr('s_profile')}</h2><div class="mu" style="margin-bottom:8px">${tr('s_name_hint')}</div><input id="pn" maxlength="24" placeholder="${esc(me.name||tr('s_name_ph'))}" value="${esc(me.nick||'')}"><div class="mu" style="margin-bottom:8px">${tr('s_avatar')}</div><div class="wrap">${['🎬','🍿','🎞','📽','🦊','🐼','👽','🧛','🐱','🦉'].map(x=>`<button class="ghost ${me.avatar==x?'on':''}" data-av="${x}">${x}</button>`).join('')}</div></div>
+<div class="sec"><h2>${tr('s_privacy')}</h2><div class="mu" style="margin-bottom:8px">${tr('s_who')}</div>${Object.entries(VIS()).map(([k,v])=>`<button class="ghost opt ${me.vis==k?'on':''}" data-vis="${k}">${v[0]}<small>${v[1]}</small></button>`).join('')}
+<div class="mu" style="margin:6px 0 8px">${tr('s_online')}</div><div class="wrap"><button class="ghost ${me.show_online?'on':''}" data-so="1">${tr('show')}</button><button class="ghost ${me.show_online?'':'on'}" data-so="0">${tr('hide')}</button></div></div>
+<div class="sec"><h2>${tr('s_look')}</h2><div class="mu" style="margin-bottom:8px">${tr('s_theme')}</div>${ch('theme',[['dark',tr('th_dark')],['light',tr('th_light')]])}
+<div class="mu" style="margin-bottom:8px">${tr('s_bg')}</div>${ch('bg',['aurora','sunset','ocean','forest','cinema','none'].map(b=>[b,tr('bg_'+b)]))}
+<div class="mu" style="margin-bottom:8px">${tr('s_accent')}</div><div class="wrap">${['#e9b872','#ff6b6b','#7c9cff','#5fcf8f','#c084fc','#ff8fc7'].map(c=>`<button class="sw ${S.accent==c?'on':''}" data-k="accent" data-v="${c}" style="background:${c}"></button>`).join('')}</div>
+<div class="mu" style="margin-bottom:8px">${tr('s_lists')}</div>${ch('compact',[['false',tr('normal')],['true',tr('compact')]])}</div>
+<div class="sec"><h2>${tr('s_misc')}</h2><div class="mu" style="margin-bottom:8px">${tr('s_start')}</div>${ch('start',[['home',tr('t_home')],['feed',tr('t_feed')],['search',tr('t_search')],['watched',tr('v_watched')]])}
+<div class="mu" style="margin-bottom:8px">${tr('s_remind')}</div><div class="wrap"><button class="ghost ${me.remind?'on':''}" data-rm="1">${tr('on_m')}</button><button class="ghost ${me.remind?'':'on'}" data-rm="0">${tr('off_m')}</button></div></div>
+<div class="sec"><h2>${tr('s_lang')}</h2><div class="wrap" style="margin:0"><button class="ghost lg ${S.lang=='ru'?'on':''}" data-lang="ru"><svg class="flag" viewBox="0 0 3 2"><rect width="3" height="2" fill="#fff"/><rect y=".667" width="3" height="1.333" fill="#0039a6"/><rect y="1.333" width="3" height=".667" fill="#d52b1e"/></svg>Русский</button><button class="ghost lg ${S.lang=='en'?'on':''}" data-lang="en"><svg class="flag" viewBox="0 0 60 30" preserveAspectRatio="xMidYMid slice"><clipPath id="uk1"><path d="M0 0h60v30H0z"/></clipPath><clipPath id="uk2"><path d="M30 15h30v15zv15H0zH0V0zV0h30z"/></clipPath><g clip-path="url(#uk1)"><path d="M0 0v30h60V0z" fill="#012169"/><path d="M0 0l60 30M60 0L0 30" stroke="#fff" stroke-width="6"/><path d="M0 0l60 30M60 0L0 30" clip-path="url(#uk2)" stroke="#C8102E" stroke-width="4"/><path d="M30 0v30M0 15h60" stroke="#fff" stroke-width="10"/><path d="M30 0v30M0 15h60" stroke="#C8102E" stroke-width="6"/></g></svg>English</button></div></div>`;
+  if(!IN_TG){app.insertAdjacentHTML('beforeend',`<div class="sec"><button class="ghost" id="lo">${tr('logout')}</button></div>`);$('#lo').onclick=logout}
+  const set=d=>{Object.assign(ME0,d);render();post('me',d)};   // сразу обновляем экран, сервер — в фоне
+  $$('[data-lang]').forEach(b=>b.onclick=()=>setLang(b.dataset.lang));
+  $('#pn').onchange=e=>set({nick:e.target.value.trim()});
+  $$('[data-av]').forEach(b=>b.onclick=()=>set({avatar:b.dataset.av}));
+  $$('[data-vis]').forEach(b=>b.onclick=()=>set({vis:b.dataset.vis}));
+  $$('[data-so]').forEach(b=>b.onclick=()=>set({show_online:b.dataset.so=='1'?1:0}));
+  $$('[data-k]').forEach(b=>b.onclick=()=>{const v=b.dataset.v;setS(b.dataset.k,v=='true'?true:v=='false'?false:v)});
+  $$('[data-rm]').forEach(b=>b.onclick=()=>set({remind:b.dataset.rm=='1'?1:0}))}
+};
+function render(){const f=VIEWS[view];if(f)f()}
+
+async function setLang(l){if(l===S.lang||!I18N[l])return;S.lang=l;saveS();applyS();ME0.lang=l;feedQ=[];feedDone.clear();paint();render();
+  await post('me',{lang:l});await loadItems();if(view!='feed')render()}   // названия и жанры приходят с сервера уже на нужном языке
+
+function shrink(file,max=480,q=.8){return new Promise(res=>{const r=new FileReader();r.onerror=()=>res('');r.onload=()=>{const im=new Image();im.onerror=()=>res('');im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',q))};im.src=r.result};r.readAsDataURL(file)})}
+
+/* Лента: подгрузка в фоне и мгновенная реакция на кнопки (раньше ждали ответ сервера на каждый свайп) */
+function feedFill(){if(feedLoad)return feedLoad;
+  feedLoad=api('feed').then(r=>{if(Array.isArray(r)){const have=new Set(feedQ.map(key));feedQ.push(...r.filter(x=>!have.has(key(x))&&!feedDone.has(key(x))&&!find(x.tid,x.type)))}}).finally(()=>feedLoad=null);return feedLoad}
+async function feedRender(){
+  if(!feedQ.length){app.innerHTML=`<p class="mu">${tr('feed_loading')}</p>`;await feedFill()}
+  if(view!='feed')return;
+  const c=feedQ[0];
+  if(!c){app.innerHTML=`<p class="mu">${tr('feed_empty')}</p>`;return}
+  if(feedQ.length<=4)feedFill();
+  if(feedQ[1])new Image().src=px(feedQ[1].poster,'w500');
+  app.innerHTML=`<div class="fc"><img src="${px(c.poster,'w500')}" decoding="async"><div class="fb"><div class="t">${esc(c.title)}</div><div class="m mu">${c.type=='tv'?tr('series'):tr('movie')} · ${esc(c.year)} · ★ ${c.vote}</div><p>${esc((c.overview||'').slice(0,200))}${(c.overview||'').length>200?'…':''}</p></div></div><div class="acts">${[['no','✕','f_no'],['seen','✓','f_seen'],['want','🔖','f_want'],['fav','♥','f_fav']].map(a=>`<button data-a="${a[0]}"><b>${a[1]}</b>${tr(a[2])}</button>`).join('')}</div><button class="go" id="fw" style="width:100%;margin-top:10px">▶ ${tr('watch_here')}</button>`;
+  $('.fc').onclick=()=>openItem(c);
+  $('#fw').onclick=()=>openItem(c,{play:true});
+  $$('[data-a]').forEach(b=>b.onclick=()=>{const a=b.dataset.a,base={tid:c.tid,type:c.type};
+    feedQ.shift();feedDone.add(key(c));feedRender();
+    if(a=='no')post('dismiss',base);else post('item',{...base,status:a=='seen'?'watched':'want',...(a=='fav'?{fav:1}:{})}).then(loadItems)})
+}
+function cards(el,r){el.innerHTML=`<div class="list">${r.map(i=>`<div class="row" data-s="${key(i)}">${poster(i)}<div><div class="t">${esc(i.title)}</div><div class="m">${i.type=='tv'?tr('series'):tr('movie')} · ${esc(i.year)} · ★ ${i.vote}</div></div>${wb(i)}</div>`).join('')}</div>`;el.querySelectorAll('[data-s]').forEach(e=>e.onclick=()=>openItem(r.find(x=>key(x)==e.dataset.s)))}
+function openItem(base,opt={}){
+  const sh=$('#sheet');sh.hidden=false;let inf=null,showTr=false,cur=null,cin=null;   // cin: null = ищем, [] = не нашли
+  let pls=null;   // null = плееры ещё ищутся, [] = не нашли
+  const okSrc=v=>!!v&&(/^https:\/\/(rutube\.ru|archive\.org|vk\.com|vkvideo\.ru)\//.test(v.src)||((v.kind=='kodik'||v.kind=='collaps')&&/^https:\/\//.test(v.src)));
+  const pq=`type=${base.type}&tid=${base.tid}${base.shikimori_id?`&shikimori_id=${base.shikimori_id}`:''}`;
+  // пока что-то играет, не перерисовываем всё (иначе iframe перезагрузится и фильм начнётся заново)
+  const soft=()=>{if(cur&&$('#srcs')){$('#srcs').innerHTML=srcHtml();if($('#trw'))$('#trw').innerHTML=trailerHtml();if($('#cin')){$('#cin').innerHTML=cinHtml();bindCin()}bindPlay();bindTr()}else draw()};
+  const startPlay=v=>{if(!okSrc(v))return false;cur=v.src;draw();const w=$('#pw');w&&w.scrollIntoView({block:'center'});return true};
+  api(`info?type=${base.type}&tid=${base.tid}&region=${S.region}`).then(r=>{if(!r.error){inf=r;soft()}});
+  api(`cinemas?type=${base.type}&tid=${base.tid}`).then(r=>{if(r&&!r.error&&Array.isArray(r.items)){cin=r.items;soft()}});
+  if(opt.play){   // быстрый запрос (только Kodik/Collaps) -> сразу запускаем, полный список подгружаем следом
+    api(`players?${pq}&fast=1`).then(r=>{pls=(r&&r.players)||[];if(!startPlay(pls[0]))soft();return api(`players?${pq}`)})
+      .then(r=>{if(r&&r.players&&r.players.length){pls=r.players;soft()}else if(pls&&!pls.length)soft()});
+  }else api(`players?${pq}`).then(r=>{pls=(r&&r.players)||[];soft()});
+  const embedSrc=(k,v)=>{if(k=='rutube')return'https://rutube.ru/play/embed/'+v;
+    if(k=='vk'){const[a,hs]=v.split(':'),[o,i]=a.split('_');return'https://vk.com/video_ext.php?oid='+o+'&id='+i+(hs?'&hash='+hs:'')+'&hd=2'}return''};
+  const playerBlock=()=>cur?`<div class="pw" id="pw"><div class="pbox"><iframe src="${esc(cur)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div><div class="pbar"><button class="ghost" id="pfs">⛶ ${tr('fs_enter')}</button><button class="ghost" id="ph">${tr('hide_pl')}</button></div></div>`:'';
+  const srcHtml=()=>{
+    if(pls===null)return`<span class="mu">${tr('w_loading')}</span>`;
+    if(!pls.length)return`<b>⏳ ${tr('na')}</b>`;
+    const KN={rutube:'Rutube',vk:'VK Видео',kodik:'Kodik',collaps:'Collaps'};
+    const lab=(v,n)=>(n==0&&(v.kind=='kodik'||v.kind=='collaps'))?tr('watch_here'):v.kind=='archive'?`${tr('watch_here')} · Internet Archive`:(v.kind=='kodik'||v.kind=='collaps')?`${KN[v.kind]} · ${tr('watch_here')}`:`${KN[v.kind]||''} · ${esc(v.title)} · ${v.dur} ${tr('min')}`;
+    return pls.map((v,n)=>`<button class="${n?'ghost':'go'}" data-play="${esc(v.src)}" data-pk="${v.kind}" style="display:block;width:100%;margin-top:${n?8:0}px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">▶ ${lab(v,n)}</button>`).join('')};
+  // кнопки онлайн-кинотеатров в их фирменных цветах: [регэксп названия, цвет 1, цвет 2, цвет текста]
+  const CBR=[[/кинопоиск|kinopoisk/i,'#ff5500','#ff9000'],[/okko|окко/i,'#2a0d5c','#8a3cff'],[/ivi|иви/i,'#e0003c','#ff4d6d'],
+    [/wink|винк/i,'#d3125c','#ff7a3d'],[/start|старт/i,'#101010','#3b3b3b','#ffd000'],[/premier|премьер/i,'#14070c','#e51d4e'],
+    [/kion|кион/i,'#d9000d','#ff5a1f'],[/amediateka|амедиатека/i,'#0a0a0a','#2e2e2e'],[/more\.tv|море/i,'#5a1fd1','#c026d3'],
+    [/megogo|мегого/i,'#e8590c','#ff9f1c'],[/netflix/i,'#b20710','#e50914'],[/apple/i,'#000','#3a3a3c'],[/youtube|ютуб/i,'#cc0000','#ff3b30'],
+    [/vk|вк/i,'#0057d9','#2d8cff'],[/rutube|рутуб/i,'#100943','#3d2bc4'],[/смотрим|smotrim/i,'#0b4fd6','#2d8cff'],[/tvigle|твигл/i,'#00875a','#20c997']];
+  const openExt=u=>{if(!/^https:\/\//.test(u))return;try{if(IN_TG&&tg.openLink){tg.openLink(u);return}}catch(e){}window.open(u,'_blank','noopener')};
+  const cinHtml=()=>{
+    if(cin===null)return'';
+    if(!cin.length)return`<div class="mu" style="margin-top:12px;font-size:13px">${tr('cin_none')}</div>`;
+    const cap=tr(base.type=='tv'?'cin_open_t':'cin_open_m');
+    return`<div class="cin-h"><b>${tr('cin_t')}</b><span>${tr('cin_s')}</span></div><div class="cin-g">${cin.map(c=>{
+      const b=CBR.find(x=>x[0].test(c.name)),c1=b?b[1]:'color-mix(in srgb,var(--go) 75%,#000)',c2=b?b[2]:'color-mix(in srgb,var(--go) 45%,#000)',fg=(b&&b[3])||'#fff';
+      return`<button class="cin" data-cin="${esc(c.url)}" style="--c1:${c1};--c2:${c2};--fg:${fg}"><span class="lg">${esc(c.name.trim().charAt(0).toUpperCase())}${c.logo?`<img src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.remove()">`:''}</span><span class="nm"><b>${esc(c.name)}</b><i>${cap}</i></span><span class="ar">›</span></button>`}).join('')}</div>`};
+  const bindCin=()=>sh.querySelectorAll('[data-cin]').forEach(b=>b.onclick=()=>openExt(b.dataset.cin));
+  const availBlock=()=>`<div class="sec"><div id="srcs">${srcHtml()}</div>${playerBlock()}<div id="cin">${cinHtml()}</div></div>`;
+  const trailerHtml=()=>inf&&inf.trailer?`<div class="sec"><button class="ghost" id="tr">${showTr?tr('hide_tr'):tr('trailer')}</button>${showTr?`<div style="position:relative;padding-top:56.25%;margin-top:10px"><iframe src="https://www.youtube-nocookie.com/embed/${inf.trailer}?playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px"></iframe></div>`:''}</div>`:'';
+  const infoBlock=()=>`<div id="trw">${trailerHtml()}</div>
+${availBlock()}`;
+  const bindTr=()=>{if($('#tr'))$('#tr').onclick=()=>{showTr=!showTr;draw()}};
+  const bindPlay=()=>sh.querySelectorAll('[data-play]').forEach(b=>b.onclick=()=>{const u=b.dataset.play,pk=b.dataset.pk;if(!okSrc({src:u,kind:pk}))return;cur=u;draw();const w=$('#pw');w&&w.scrollIntoView({block:'center'})});
+  const draw=()=>{const own=find(base.tid,base.type),i={...base,...(own||{})},have=!!own,tv=i.type=='tv';
+    sh.innerHTML=`<button class="back" style="display:block;width:auto;padding:0 14px;margin-bottom:12px" id="x">‹ ${tr('back')}</button><div class="hero">${poster(i,'w342')}<div><h2>${esc(i.title)}</h2><div class="mu">${esc(i.year)} ${i.runtime?'· '+i.runtime+' '+tr('min'):''}</div><div class="mu">${esc(i.genres||'')}</div><div class="mu" style="margin-top:6px">${esc((i.overview||'').slice(0,160))}</div></div></div>
+<div class="wrap"><button class="ghost ${i.status=='want'?'on':''}" data-st="want">${tr('st_want')}</button>${tv?`<button class="ghost ${i.status=='watching'?'on':''}" data-st="watching">${tr('st_watching')}</button>`:''}<button class="ghost ${i.status=='watched'?'on':''}" data-st="watched">${tr('st_watched')}</button><button class="ghost ${i.fav?'on':''}" id="fv">${i.fav?'♥':'♡'} ${tr('favorite')}</button></div>
+${have&&i.status!='want'?`<div class="sec"><div class="hd"><b>${tr('rating')}</b><span class="badge">${i.rating||'–'}</span></div><div class="wrap">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button class="ghost ${i.rating==n?'on':''}" data-r="${n}">${n}</button>`).join('')}</div>
+${tv?`<b>${tr('progress')}</b><div class="wrap" style="margin-top:8px"><input id="se" type="number" min="1" value="${i.season}" style="width:90px;margin:0" placeholder="${tr('season_ph')}"><input id="ep" type="number" min="0" value="${i.episode}" style="width:90px;margin:0" placeholder="${tr('episode_ph')}"></div>`:''}
+<b>${tr('diary')}</b><div class="chips" style="margin-top:8px">${MOODS.map(m=>`<button class="ghost ${i.mood==m?'on':''}" data-m="${m}">${m}</button>`).join('')}</div>
+<input type="date" id="dt" value="${esc(i.date||'')}"><textarea id="nt" rows="4" placeholder="${tr('impr')}">${esc(i.note)}</textarea><button class="go" id="sv">${tr('save')}</button></div>`:''}
+${infoBlock()}
+${have?`<button class="ghost" id="rm">${tr('remove')}</button>`:''}`;
+    $('#x').onclick=()=>{sh.hidden=true;render()};
+    bindTr();
+    bindPlay();bindCin();
+    if($('#ph'))$('#ph').onclick=()=>{cur=null;draw()};
+    if($('#pfs'))$('#pfs').onclick=()=>{const w=$('#pw'),on=!w.classList.contains('fs');
+      w.classList.toggle('fs',on);$('#pfs').textContent='⛶ '+tr(on?'fs_exit':'fs_enter');
+      if(on){try{const f=w.requestFullscreen||w.webkitRequestFullscreen;const p=f&&f.call(w);p&&p.catch&&p.catch(()=>{})}catch(e){}try{screen.orientation.lock('landscape').catch(()=>{})}catch(e){}}
+      else{try{if(fsEl())(document.exitFullscreen||document.webkitExitFullscreen).call(document)}catch(e){}try{screen.orientation.unlock()}catch(e){}}};
+    const upd=async d=>{await post('item',{tid:base.tid,type:base.type,...d});await loadItems();draw()};
+    sh.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>upd({status:b.dataset.st}));
+    $('#fv').onclick=()=>upd({fav:i.fav?0:1});
+    sh.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>upd({rating:+b.dataset.r}));
+    sh.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>upd({mood:b.dataset.m}));
+    if($('#sv'))$('#sv').onclick=()=>upd({date:$('#dt').value||null,note:$('#nt').value,...(tv?{season:+$('#se').value,episode:+$('#ep').value}:{})});
+    if($('#rm'))$('#rm').onclick=async()=>{await post('item/delete',{tid:i.tid,type:i.type});await loadItems();sh.hidden=true;render()}};
+  draw()}
+
+/* ───────── Совместный просмотр ───────── */
+let SID=0,SS=null,SP=null,sessT=null,hostT=null,H={playing:false,pos:0,t:0},LOCK=0,OFF=0,stall=0,hstall=0,lastSeek=0,draft='',PGEN=0,polling=false,lastOn=null,PEND={invites:[],sent:[],active:null},pendSig='';
+const newCH=()=>({imgs:{},msgs:[],last:0,init:false,loading:false,unread:0,open:false});
+let CH=newCH();
+let FS=false,FSNAT=false,FSLOCK=false,FSTG=false,FSPORT=false,FSSWAP=false;
+const REACT=['👍','😂','😮','❤️','🔥'];
+let TYP={sent:0};
+const sNow=()=>Date.now()/1000+OFF;                                     // серверное время (с поправкой на сдвиг часов)
+const sExp=()=>SS.playing?SS.pos+Math.max(0,sNow()-SS.upd):SS.pos;      // где сейчас должно быть видео по версии сервера
+const hExp=()=>H.playing?H.pos+(Date.now()-H.t)/1000:H.pos;             // то же для ведущего по его последнему действию
+const say=m=>tg.showAlert?tg.showAlert(m):alert(m);
+const tapShow=b=>{const t=$('#tap');if(t)t.style.display=b?'block':'none'};
+const touchDev=()=>matchMedia('(pointer:coarse)').matches;
+const fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement;
+const sigOf=r=>JSON.stringify([r.invites.map(i=>i.id),r.sent.map(i=>i.id),r.active&&r.active.id]);
+function sessStop(){exitFs();{const n=$('#ntf');if(n)n.remove()}CH=newCH();PGEN++;clearInterval(sessT);clearInterval(hostT);sessT=hostT=null;if(SP){try{SP.destroy()}catch(e){}SP=null}SS=null;stall=hstall=0;polling=false;lastOn=null}
+
+/* ───── Плееры ───── */
+let ytP=null;
+const loadJs=(src,test)=>test()?Promise.resolve():new Promise(r=>{const s=document.createElement('script');s.src=src;s.onload=r;s.onerror=r;document.head.appendChild(s)});
+const ytLoad=()=>ytP||(ytP=new Promise(r=>{if(window.YT&&YT.Player)return r();const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s);window.onYouTubeIframeAPIReady=r}));
+const loadHls=()=>loadJs('https://cdn.jsdelivr.net/npm/hls.js@1',()=>window.Hls);
+const loadVimeo=()=>loadJs('https://player.vimeo.com/api/player.js',()=>window.Vimeo);
+const loadVK=()=>loadJs('https://vk.com/js/api/videoplayer.js',()=>window.VK&&VK.VideoPlayer);
+
+/* Часы для плееров с асинхронным API (Vimeo, Rutube): время и состояние кэшируются по событиям */
+function clock(){const c={t:0,at:Date.now(),pl:false,buf:false,end:false};
+  c.set=(t,pl)=>{if(t!=null&&!isNaN(t))c.t=+t;if(pl!=null)c.pl=pl;c.at=Date.now()};
+  c.now=()=>c.pl?c.t+(Date.now()-c.at)/1000:c.t;return c}
+
+/* Единый интерфейс плеера: YouTube, Vimeo, Rutube и обычный <video> (файлы и HLS) */
+async function mkPlayer(kind,vid,host,gen){
+  const box=$('#sp');box.innerHTML='';const P={rd:false};
+  const ready=()=>{if(gen!=PGEN||P.rd)return;P.rd=true;onReady()};
+  const err=()=>{if(gen==PGEN&&!P.er){P.er=1;say(tr('w_embed_err'))}};
+  if(kind=='yt'){
+    await ytLoad();if(gen!=PGEN)return null;
+    const el=document.createElement('div');box.appendChild(el);let yp;
+    const st=()=>{try{return yp.getPlayerState()}catch(e){return-1}};
+    yp=new YT.Player(el,{width:'100%',height:'100%',videoId:vid,
+      playerVars:{playsinline:1,controls:1,disablekb:host?0:1,fs:0,rel:0,modestbranding:1,iv_load_policy:3,origin:location.origin},   // fs:0 — полный экран свой, чтобы остались чат и синхронизация
+      events:{onReady:ready,onError:err,onStateChange:e=>{if(gen!=PGEN)return;if(e.data==1)onEvt('play');else if(e.data==2)onEvt('pause')}}});
+    Object.assign(P,{play:()=>yp.playVideo(),pause:()=>yp.pauseVideo(),seek:t=>yp.seekTo(t,true),time:()=>+yp.getCurrentTime()||0,
+      isPlaying:()=>{const s=st();return s==1||s==3},buffering:()=>st()==3,ended:()=>st()==0,destroy:()=>{try{yp.destroy()}catch(e){}}});
+  }else if(kind=='vimeo'){
+    await loadVimeo();if(gen!=PGEN)return null;
+    if(!window.Vimeo){err();return null}
+    const [id,hash]=vid.split(':'),c=clock(),el=document.createElement('div');el.style.cssText='width:100%;height:100%';box.appendChild(el);
+    const vp=new Vimeo.Player(el,{url:'https://vimeo.com/'+id+(hash?'/'+hash:''),controls:true,playsinline:true,dnt:true,title:false,byline:false,portrait:false});
+    vp.on('loaded',ready);vp.ready().then(ready).catch(err);
+    vp.on('play',d=>{c.set(d&&d.seconds,true);c.end=false;if(gen==PGEN)onEvt('play')});
+    vp.on('pause',d=>{c.set(d&&d.seconds,false);if(gen==PGEN)onEvt('pause')});
+    vp.on('timeupdate',d=>c.set(d&&d.seconds));vp.on('seeked',d=>c.set(d&&d.seconds));
+    vp.on('ended',()=>{c.end=true;c.pl=false});vp.on('bufferstart',()=>c.buf=true);vp.on('bufferend',()=>c.buf=false);vp.on('error',err);
+    Object.assign(P,{play:()=>{vp.play().catch(()=>{})},pause:()=>{vp.pause().catch(()=>{})},seek:t=>{c.set(t);vp.setCurrentTime(t).catch(()=>{})},
+      time:c.now,isPlaying:()=>c.pl,buffering:()=>c.buf,ended:()=>c.end,destroy:()=>{try{vp.destroy()}catch(e){}}});
+  }else if(kind=='vk'){
+    // VK Видео: iframe video_ext.php + официальный IFrame API (js_api=1); время кэшируем по событиям, как у Vimeo/Rutube
+    await loadVK();if(gen!=PGEN)return null;
+    if(!(window.VK&&VK.VideoPlayer)){err();return null}
+    const [id,hash]=vid.split(':'),[oid,vi]=id.split('_'),c=clock(),f=document.createElement('iframe');
+    f.src='https://vk.com/video_ext.php?oid='+oid+'&id='+vi+(hash?'&hash='+hash:'')+'&hd=2&autoplay=0&js_api=1';
+    f.allow='autoplay; encrypted-media; fullscreen; picture-in-picture; screen-wake-lock';f.setAttribute('allowfullscreen','');box.appendChild(f);
+    let vp=null;const tm=d=>typeof d=='number'?d:d&&(d.time!=null?d.time:d.currentTime);
+    try{vp=VK.VideoPlayer(f)}catch(e){err();return null}
+    const call=(n,...a)=>{try{return vp[n](...a)}catch(e){}};
+    vp.on('inited',ready);
+    vp.on('started',d=>{c.set(tm(d),true);c.end=false;if(gen==PGEN)onEvt('play')});
+    vp.on('resumed',d=>{c.set(tm(d),true);c.end=false;if(gen==PGEN)onEvt('play')});
+    vp.on('paused',d=>{c.set(tm(d),false);if(gen==PGEN)onEvt('pause')});
+    vp.on('timeupdate',d=>{const t=tm(d);if(t!=null)c.set(t)});
+    vp.on('ended',()=>{c.end=true;c.pl=false});vp.on('error',err);
+    f.onload=()=>setTimeout(ready,3500);                 // если плеер не прислал «inited», считаем готовым сами
+    Object.assign(P,{play:()=>call('play'),pause:()=>call('pause'),seek:t=>{c.set(t);call('seek',t)},
+      time:c.now,isPlaying:()=>c.pl,buffering:()=>false,ended:()=>c.end,destroy:()=>{try{f.src='about:blank'}catch(e){}}});
+  }else if(kind=='rutube'){
+    const c=clock(),f=document.createElement('iframe');
+    f.src='https://rutube.ru/play/embed/'+vid;f.allow='autoplay; encrypted-media; fullscreen; picture-in-picture';box.appendChild(f);
+    const cmd=(type,data)=>{try{f.contentWindow.postMessage(JSON.stringify({type,data:data||{}}),'*')}catch(e){}};
+    const onMsg=e=>{if(gen!=PGEN){removeEventListener('message',onMsg);return}if(e.source!==f.contentWindow)return;
+      let d=e.data;try{if(typeof d=='string')d=JSON.parse(d)}catch(x){return}if(!d||!d.type)return;const x=d.data||{};
+      if(d.type=='player:ready')ready();
+      else if(d.type=='player:changeState'){if(x.state=='playing'){c.set(null,true);c.end=false;onEvt('play')}else if(x.state=='paused'){c.set(null,false);onEvt('pause')}else if(x.state=='stopped'){c.end=true;c.pl=false}}
+      else if(d.type=='player:currentTime'&&x.time!=null)c.set(x.time)};
+    addEventListener('message',onMsg);f.onload=()=>setTimeout(ready,4000);          // если плеер не прислал «ready», считаем готовым сами
+    Object.assign(P,{play:()=>cmd('player:play'),pause:()=>cmd('player:pause'),seek:t=>{c.set(t);cmd('player:setCurrentTime',{time:t})},
+      time:c.now,isPlaying:()=>c.pl,buffering:()=>false,ended:()=>c.end,destroy:()=>{removeEventListener('message',onMsg);try{f.src='about:blank'}catch(e){}}});
+  }else{
+    const v=document.createElement('video');v.playsInline=true;v.setAttribute('playsinline','');v.controls=true;v.preload='auto';
+    v.setAttribute('controlslist','nofullscreen nodownload noremoteplayback');v.disablePictureInPicture=true;   // свой полный экран: с чатом и синхронизацией
+    v.style.cssText='width:100%;height:100%;background:#000';box.appendChild(v);let hls=null;
+    if(/\.m3u8(\?|$)/i.test(vid)&&!v.canPlayType('application/vnd.apple.mpegurl')){
+      await loadHls();if(gen!=PGEN)return null;
+      if(window.Hls&&Hls.isSupported()){hls=new Hls();hls.on(Hls.Events.ERROR,(_,d)=>{if(d&&d.fatal)err()});hls.loadSource(vid);hls.attachMedia(v)}else v.src=vid
+    }else v.src=vid;
+    v.onloadedmetadata=ready;v.onerror=err;v.onplay=()=>gen==PGEN&&onEvt('play');v.onpause=()=>gen==PGEN&&onEvt('pause');
+    Object.assign(P,{play:()=>{const p=v.play();p&&p.catch&&p.catch(()=>{})},pause:()=>v.pause(),seek:t=>{v.currentTime=t},time:()=>v.currentTime||0,
+      isPlaying:()=>!v.paused&&!v.ended,buffering:()=>!v.paused&&v.readyState<3,ended:()=>v.ended,
+      destroy:()=>{try{v.pause();v.removeAttribute('src');v.load();hls&&hls.destroy()}catch(e){}}});
+  }
+  return P}
+
+async function buildPlayer(){
+  const gen=++PGEN;if(SP){try{SP.destroy()}catch(e){}SP=null}
+  const s=SS,w=$('#spw'),st=$('#stage'),fo=$('#fso');if(!w||!s)return;
+  if(!s.kind){w.style.display='none';fo.style.display='none';st.classList.remove('hm');exitFs();return}
+  w.style.display='block';fo.style.display='block';st.classList.add('hm');$('#shield').style.display='none';
+  H={playing:false,pos:0,t:Date.now()};stall=hstall=0;tapShow(false);
+  const P=await mkPlayer(s.kind,s.vid,s.role=='host',gen);
+  if(gen!=PGEN){try{P&&P.destroy()}catch(e){}return}
+  SP=P}
+
+/* Плеер готов: если просмотр уже идёт (вошли позже / сменили видео), догоняем */
+function onReady(){const s=SS;if(!SP||!s||!s.started)return;
+  const e=sExp();LOCK=Date.now()+2500;H={playing:!!s.playing,pos:e,t:Date.now()};SP.seek(e);if(s.playing)SP.play()}
+
+/* ───── Ведущий: события плеера → сервер ───── */
+function ctl(act,pos){const n=Date.now();
+  if(act=='play')H={playing:true,pos,t:n};else if(act=='pause')H={playing:false,pos,t:n};else if(act=='seek')H={playing:H.playing,pos,t:n};
+  return post('session/ctl',{id:SID,act,pos})}
+function onEvt(e){const s=SS;if(!s||s.role!='host'||!s.started||Date.now()<LOCK||!SP||!SP.rd)return;
+  const t=SP.time();if(e=='play'&&!H.playing)ctl('play',t);else if(e=='pause'&&H.playing)ctl('pause',t)}
+function hostTick(){const s=SS;if(!SP||!SP.rd||!s||s.role!='host'||s.status!='active')return;
+  if(!s.started){if(SP.isPlaying()&&!SP.buffering())SP.pause();return}      // до общего старта ведущий смотреть не может
+  if(Date.now()<LOCK||SP.ended())return;
+  if(H.playing&&!SP.isPlaying()){hstall++;tapShow(hstall>=4);return}          // автозапуск заблокирован → кнопка «Нажми»
+  hstall=0;tapShow(false);if(SP.buffering())return;
+  const t=SP.time();if(Math.abs(t-hExp())>1.6)ctl('seek',t)}                  // перемотку плеер как событие не отдаёт: ловим скачок времени
+
+/* ───── Гость: сервер → плеер ───── */
+function guestApply(){const s=SS;if(!SP||!SP.rd||!s||s.role=='host'||!s.started||s.status!='active')return;
+  const e=sExp(),t=SP.time(),n=Date.now();
+  if(s.playing){
+    if(SP.ended())return;
+    if(!SP.isPlaying()){SP.play();stall++}else stall=0;
+    if(Math.abs(t-e)>1.3&&n-lastSeek>2000){SP.seek(e);lastSeek=n}
+  }else{stall=0;if(SP.isPlaying())SP.pause();if(Math.abs(t-s.pos)>.5&&n-lastSeek>1000){SP.seek(s.pos);lastSeek=n}}
+  tapShow(s.playing&&stall>=3)}
+
+function onState(prev){const s=SS,k=o=>o&&o.kind?o.kind+'|'+o.vid:'';
+  if(k(s)!==k(prev)){buildPlayer();return}
+  if(!s.started&&prev&&prev.started)exitFs();                                  // лобби: управление должно быть видно, даже если плеер ещё не готов
+  if(!SP||!SP.rd)return;
+  if(s.started&&!(prev&&prev.started)){const e=sExp();LOCK=Date.now()+2500;stall=hstall=0;H={playing:true,pos:e,t:Date.now()};SP.seek(e);SP.play()}
+  else if(!s.started&&prev&&prev.started){LOCK=Date.now()+1500;H={playing:false,pos:0,t:Date.now()};SP.pause();SP.seek(0);tapShow(false)}}
+
+/* ───── Полный экран ─────
+   Включается ТОЛЬКО кнопкой (⛶) и выключается только кнопкой (✕), Esc или системным жестом. Никакого авто-входа/выхода при повороте.
+   По нажатию:
+   1) в Telegram 8.0+ открываем настоящий полноэкранный режим мини-приложения (tg.requestFullscreen);
+   2) пробуем принудительно повернуть экран в альбомный: screen.orientation.lock('landscape')
+      (в браузерах, где для этого нужен нативный fullscreen, включаем и его);
+   3) если повернуть экран нельзя (блокировка поворота, iOS), разворачиваем картинку на 90° сами.
+   Ориентацию определяем по screen.orientation, а не по размеру окна: клавиатура и панели Telegram не переключают режим. */
+const leaveNative=async()=>{FSSWAP=true;try{await (document.exitFullscreen||document.webkitExitFullscreen).call(document)}catch(e){}setTimeout(()=>FSSWAP=false,400)};
+const isPortrait=()=>{const o=screen.orientation&&screen.orientation.type;if(o)return o.indexOf('portrait')==0;
+  if(typeof window.orientation=='number')return Math.abs(window.orientation)!=90;return innerHeight>innerWidth};
+const tgFsOk=()=>{try{return !!tg.requestFullscreen&&(!tg.isVersionAtLeast||tg.isVersionAtLeast('8.0'))}catch(e){return false}};
+const tryLock=async()=>{try{await screen.orientation.lock('landscape');return true}catch(e){return false}};
+async function enterFs(){
+  const st=$('#stage');if(!st||FS||!SS||!SS.kind)return;
+  FS=true;FSNAT=false;FSLOCK=false;FSPORT=false;
+  st.classList.add('fs');document.documentElement.classList.add('fsmode');
+  try{tg.disableVerticalSwipes&&tg.disableVerticalSwipes()}catch(e){}        // свайп вниз не должен закрывать приложение
+  fsLayout();                                                                 // сразу показываем (повёрнутым, если надо), без ожидания
+  const touch=touchDev(),lk=touch&&screen.orientation&&screen.orientation.lock;
+  if(tgFsOk()){try{if(!tg.isFullscreen){tg.requestFullscreen();FSTG=true}}catch(e){}}
+  if(lk){
+    FSLOCK=await tryLock();                                                   // без нативного fullscreen (подходит установленным PWA и части WebView)
+    if(!FSLOCK&&!FSTG){                                                       // обычный браузер: lock() работает только в нативном fullscreen
+      const rq=st.requestFullscreen||st.webkitRequestFullscreen;
+      if(rq&&FS){try{await rq.call(st);FSNAT=true}catch(e){}}
+      if(FSNAT){FSLOCK=await tryLock();if(!FSLOCK){await leaveNative();FSNAT=false}}   // в нативном режиме transform запрещён: если не повернулось, уходим в «мягкий»
+    }
+  }else if(!touch&&!FSTG){                                                    // компьютер: обычный нативный fullscreen
+    const rq=st.requestFullscreen||st.webkitRequestFullscreen;
+    if(rq){try{await rq.call(st);FSNAT=true}catch(e){}}
+  }
+  if(!FS)return;
+  fsLayout();setTimeout(fsLayout,350);setTimeout(fsLayout,900)}               // Telegram и поворот экрана меняют размеры не мгновенно
+async function exitFs(){
+  if(!FS)return;FS=false;FSLOCK=false;
+  const st=$('#stage');if(st){st.classList.remove('fs','rot','port','co');st.style.width=st.style.height=st.style.transform=''}
+  document.documentElement.classList.remove('fsmode');CH.open=false;const fc=$('#fsc');if(fc)fc.hidden=true;
+  if(fsEl())await leaveNative();
+  try{screen.orientation&&screen.orientation.unlock&&screen.orientation.unlock()}catch(e){}
+  if(FSTG){try{tg.exitFullscreen()}catch(e){}FSTG=false}
+  try{tg.enableVerticalSwipes&&tg.enableVerticalSwipes()}catch(e){}
+  fsUi()}
+function fsLayout(){
+  const st=$('#stage');if(!st||!FS)return;
+  const a=document.activeElement;if(a&&/INPUT|TEXTAREA/.test(a.tagName)&&st.contains(a))return;   // пока печатают в чате, размеры не пересчитываем (клавиатура)
+  const portrait=isPortrait(),rot=portrait&&touchDev()&&!FSPORT&&!FSNAT&&!FSLOCK;
+  const w=innerWidth,h=innerHeight;
+  st.classList.toggle('rot',rot);st.classList.toggle('port',!rot&&portrait&&touchDev()&&!FSLOCK);
+  if(rot){st.style.width=h+'px';st.style.height=w+'px';st.style.transform=`translateX(${w}px) rotate(90deg)`}
+  else st.style.width=st.style.height=st.style.transform='';
+  fsUi()}
+function fsUi(){const b=$('#bfs');if(!b)return;b.textContent=FS?'✕':'⛶';b.title=tr(FS?'fs_exit':'fs_enter');
+  const r=$('#brt');if(r)r.style.display=FS&&touchDev()&&!FSNAT&&!FSLOCK?'':'none'}
+const fsToggle=()=>{FS?exitFs():enterFs()};
+let fsT=0;const fsSoon=()=>{clearTimeout(fsT);fsT=setTimeout(fsLayout,120)};                // дребезг resize/orientationchange гасим
+addEventListener('resize',fsSoon);addEventListener('orientationchange',fsSoon);
+try{screen.orientation&&screen.orientation.addEventListener('change',fsSoon)}catch(e){}
+try{tg.onEvent('fullscreenChanged',fsSoon);tg.onEvent('safeAreaChanged',fsSoon);tg.onEvent('viewportChanged',fsSoon)}catch(e){}
+document.addEventListener('focusout',()=>setTimeout(fsLayout,250));
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{if(FS&&FSNAT&&!fsEl()&&!FSSWAP)exitFs()}));   // вышли системным жестом / Esc
+addEventListener('keydown',e=>{if(view!='session'||!SS||!SS.kind||/INPUT|TEXTAREA|SELECT/.test((e.target||{}).tagName||''))return;
+  if(e.key=='Escape'&&FS&&!FSNAT)exitFs();else if(/^[fFаА]$/.test(e.key))fsToggle()});
+
+/* ───── Чат сессии ───── */
+const rxHTML=()=>REACT.map(e=>`<button class="ghost rx" data-rx="${e}">${e}</button>`).join('');
+function msgNode(m){const pr=m.me?{name:tr('w_you'),avatar:ME0.avatar||'🎬'}:(SS&&SS.peer)||{};
+  const d=document.createElement('div');d.className='mrow'+(m.me?' me':'');
+  const av=document.createElement('div');av.className='av xs';av.textContent=pr.avatar||'🎬';
+  const b=document.createElement('div');b.className='msg'+(m.me?' me':'');
+  const w=document.createElement('div');w.className='who';w.textContent=pr.name||tr('buff');b.appendChild(w);
+  if(m.img){const im=document.createElement('img');im.className='mimg';im.alt='';b.appendChild(im);loadImg(m.id,im)}
+  if(m.text){const t=document.createElement('span');t.textContent=m.text;b.appendChild(t)}
+  const s=document.createElement('small');s.textContent=hm(m.ts);b.appendChild(s);d.append(av,b);return d}
+async function loadImg(mid,el){const ch=CH;if(!ch.imgs[mid])ch.imgs[mid]=api('session/img?id='+SID+'&mid='+mid).then(r=>(r&&r.img)||'');
+  const u=await ch.imgs[mid];if(!u||!el.isConnected&&ch!==CH)return;el.src=u;el.onclick=()=>viewImg(u);
+  el.onload=()=>{const box=el.closest('.cm'),row=el.closest('.mrow');if(box&&row===box.lastElementChild)box.scrollTop=box.scrollHeight}}
+function viewImg(u){const o=document.createElement('div');o.className='imgv';const i=document.createElement('img');i.src=u;o.appendChild(i);o.onclick=()=>o.remove();document.body.appendChild(o)}
+function chatDraw(fresh){['#cm','#fcm'].forEach(sel=>{const box=$(sel);if(!box)return;
+  const near=!box.querySelector('.msg')||box.scrollHeight-box.scrollTop-box.clientHeight<90,e=box.querySelector('p');
+  if(fresh.length){if(e)e.remove();fresh.forEach(m=>box.appendChild(msgNode(m)))}
+  else if(!CH.msgs.length&&!e)box.innerHTML=`<p class="mu">${tr('no_msgs')}</p>`;
+  if(near)box.scrollTop=box.scrollHeight})}
+function badge(){const b=$('#bdg');if(!b)return;b.hidden=!CH.unread;b.textContent=CH.unread>9?'9+':CH.unread}
+function chatVisible(){if(FS)return CH.open;const c=$('#schat');if(!c)return false;const r=c.getBoundingClientRect();return r.top<innerHeight-90&&r.bottom>60}
+function ntf(m){let box=FS?$('#fst'):$('#ntf');if(!box){if(FS)return;box=document.createElement('div');box.id='ntf';document.body.appendChild(box)}
+  const pr=(SS&&SS.peer)||{},d=document.createElement('div');d.className='toast';
+  const a=document.createElement('div');a.className='av xs';a.textContent=pr.avatar||'🎬';
+  const t=document.createElement('div');t.className='tt';const n=document.createElement('b');n.textContent=pr.name||tr('buff');
+  const x=document.createElement('span');x.textContent=m.img&&!m.text?tr('photo_lbl'):m.img?'📷 '+m.text:m.text;t.append(n,x);d.append(a,t);
+  d.onclick=()=>{d.remove();if(FS){if(!CH.open){const bc=$('#bch');bc&&bc.click()}}else{const c=$('#schat');c&&c.scrollIntoView({behavior:'smooth',block:'center'})}};
+  box.appendChild(d);while(box.children.length>3)box.firstChild.remove();setTimeout(()=>d.remove(),6000)}
+function floatEmoji(e){const st=$('#stage');if(!st)return;const s=document.createElement('span');s.className='fl';s.textContent=e;s.style.left=(8+Math.random()*70)+'%';st.appendChild(s);setTimeout(()=>s.remove(),2600)}
+function onMsgIn(m){
+  if(REACT.includes(m.text)){floatEmoji(m.text);return}
+  if(m.me)return;
+  if(FS&&!CH.open){CH.unread++;badge()}
+  if(!chatVisible())ntf(m)}
+async function chatFetch(){
+  const ch=CH;if(ch.loading||!SID)return;ch.loading=true;
+  try{const r=await api('session/chat?id='+SID+'&after='+ch.last);
+    if(ch!==CH||!r.msgs)return;
+    const first=!ch.init;ch.init=true;
+    const fresh=r.msgs.filter(m=>m.id>ch.last);fresh.forEach(m=>{ch.msgs.push(m);ch.last=m.id});
+    chatDraw(fresh);if(!first)fresh.forEach(onMsgIn)}
+  finally{ch.loading=false}}
+async function chatSend(text,img){text=(text||'').trim();if((!text&&!img)||!SS||SS.status!='active')return;
+  const r=await post('session/chat',{id:SID,text,img});
+  if(r.error&&r.error!='slow'){say(errText(r));return}
+  chatFetch()}
+async function chatSendImg(file){if(!file)return;const d=await shrink(file,900,.72);if(d)chatSend('',d)}
+function typPing(){if(!SS||SS.status!='active')return;const n=Date.now();if(n-TYP.sent>2500){TYP.sent=n;post('session/typing',{id:SID})}}
+function typDraw(){const on=!!(SS&&SS.peer_typing);['#typ','#ftyp'].forEach(sel=>{const e=$(sel);if(!e||e.dataset.on==String(on))return;e.dataset.on=on;
+  e.innerHTML=on?esc(tr('typing',{n:(SS.peer&&SS.peer.name)||tr('buff')}))+'<i class="dots"></i>':''})}
+
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-rx]');if(b)chatSend(b.dataset.rx)});
+
+function head(){const s=SS;$('#sh').innerHTML=`<div class="sec" style="padding:10px 14px"><div class="hd" style="margin:0"><b>${tr('w_with',{n:esc(s.peer?.name||tr('buff'))})}</b><span class="mu">${s.peer_on?`<span class="dot"></span>${tr('w_peer_on')}`:`<span class="dot off"></span>${tr('w_peer_off')}`}</span></div></div>`}
+
+function ctlRender(){const s=SS,host=s.role=='host',me=host?s.hr:s.gr,pe=host?s.gr:s.hr,n=esc(s.peer?.name||tr('buff'));
+  const st=v=>v?`<b class="badge">✓ ${tr('w_ready_st')}</b>`:`<b class="mu">${tr('w_notready')}</b>`;
+  let h='';
+  if(!s.started){
+    if(host)h+=`<div class="sec"><div style="display:flex;gap:8px;margin-bottom:10px"><input id="wu" style="margin:0" placeholder="${tr('w_link_ph')}" value="${esc(draft)}" autocapitalize="off" autocomplete="off" inputmode="url"><button class="ghost" id="wp" title="${tr('w_paste')}">📋</button></div><button class="go" id="wl" style="width:100%">${s.kind?tr('w_change'):tr('w_set')}</button><p class="mu" style="margin-top:8px;font-size:12px">${tr('w_hint')}</p></div>`;
+    if(s.kind)h+=`<div class="sec"><div class="hd"><span>${tr('w_you')}</span>${st(me)}</div><div class="hd"><span>${n}</span>${st(pe)}</div><button class="go" id="wr" style="width:100%">${me?tr('w_unready'):tr('w_ready')}</button><p class="mu" style="margin-top:8px;font-size:12px">${tr('w_both')}</p></div>`;
+    else if(!host)h+=`<div class="sec"><p class="mu">${tr('w_wait_media')}</p></div>`;
+  }else h+=`<div class="sec"><div class="mu">${host?tr('w_host_ctl'):tr('w_guest_ctl',{n})}</div><div class="wrap" style="margin:10px 0 0">${host?`<button class="ghost" id="wx">${tr('w_stop_watch')}</button>`:''}<button class="ghost" id="wf">⛶ ${tr('fs_enter')}</button></div></div>`;
+  h+=`<button class="ghost" id="we" style="width:100%;margin-bottom:12px">${tr('w_end')}</button>`;
+  $('#sc').innerHTML=h;
+  if($('#wu')){$('#wu').oninput=e=>draft=e.target.value;$('#wu').onkeydown=e=>{if(e.key=='Enter')$('#wl').click()}}
+  if($('#wp'))$('#wp').onclick=async()=>{try{const t=await navigator.clipboard.readText();if(t){$('#wu').value=t;draft=t}}catch(e){$('#wu').focus()}};
+  if($('#wl'))$('#wl').onclick=async()=>{const u=$('#wu').value.trim();if(!u)return;const b=$('#wl'),t=b.textContent;b.disabled=true;b.textContent=tr('w_loading');
+    const r=await post('session/media',{id:SID,url:u});if(b.isConnected){b.disabled=false;b.textContent=t}
+    if(r.error){say(errText(r));return}draft='';sessPoll()};
+  if($('#wr'))$('#wr').onclick=async()=>{const r=await post('session/ready',{id:SID,ready:me?0:1});if(r.error)say(errText(r));sessPoll()};
+  if($('#wx'))$('#wx').onclick=async()=>{await post('session/ctl',{id:SID,act:'reset',pos:0});sessPoll()};
+  if($('#wf'))$('#wf').onclick=()=>enterFs();
+  $('#we').onclick=()=>{const go=async()=>{await post('session/stop',{id:SID});PEND.active=null;nav('watch','v_watch')};tg.showConfirm?tg.showConfirm(tr('w_end_q'),ok=>ok&&go()):go()}}
+
+async function sessPoll(){
+  if(view!='session'||polling)return;polling=true;
+  try{
+    const t0=Date.now(),r=await api('session?id='+SID+'&v='+(SS?SS.ver:0)),t1=Date.now();
+    if(view!='session'||!sessT)return;
+    if(r.error){if(r.error!='net'){sessStop();nav('watch','v_watch')}return}
+    if(t1-t0<2500)OFF=r.now-(t0+t1)/2000;
+    if(r.same){SS.peer_on=r.peer_on;SS.peer_typing=r.peer_typing}
+    else{
+      const prev=SS;SS=r;
+      if(r.status!='active'){say(tr('w_ended'));PEND.active=null;sessStop();nav('watch','v_watch');return}
+      onState(prev);ctlRender()}
+    if(lastOn!==SS.peer_on||!r.same){lastOn=SS.peer_on;head()}
+    typDraw();
+    guestApply();
+    if(r.chat>CH.last||!CH.init)chatFetch()}
+  finally{polling=false}}
+
+VIEWS.session=function(){
+  if(sessT)return;
+  app.innerHTML=`<div id="sh"></div>
+<div id="stage"><div id="spw" style="display:none"><div id="sp"></div><div id="shield"></div><button class="go" id="tap" style="display:none">${tr('w_tap')}</button></div>
+<div id="fso" style="display:none"><div id="fsb"><button id="bch" title="${tr('fs_chat')}">💬<i id="bdg" hidden></i></button><button id="brt" title="${tr('fs_rot')}" style="display:none">⟳</button><button id="bfs" title="${tr('fs_enter')}">⛶</button></div><div id="fst"></div>
+<div id="fsc" hidden><div class="cm" id="fcm"></div><div class="typ" id="ftyp"></div><div class="react">${rxHTML()}</div><div class="cin"><label class="ghost att">📷<input class="phin" type="file" accept="image/*" hidden></label><input id="fci" placeholder="${tr('msg_ph')}" maxlength="500" autocomplete="off" enterkeyhint="send"><button class="go" id="fcs">➤</button></div></div></div></div>
+<div id="sc"></div>
+<div class="sec" id="schat"><div class="hd"><b>💬 ${tr('c_title')}</b></div><div class="cm" id="cm"></div><div class="typ" id="typ"></div><div class="react">${rxHTML()}</div><div class="cin"><label class="ghost att">📷<input class="phin" type="file" accept="image/*" hidden></label><input id="cmi" placeholder="${tr('msg_ph')}" maxlength="500" autocomplete="off" enterkeyhint="send"><button class="go" id="cms">➤</button></div></div>`;
+  $('#tap').onclick=()=>{if(SP&&SP.rd){SP.play();stall=hstall=0;lastSeek=0;tapShow(false)}};
+  $('#bfs').onclick=fsToggle;
+  $$('.phin').forEach(i=>i.onchange=async e=>{const f=e.target.files[0];e.target.value='';await chatSendImg(f)});
+  $('#brt').onclick=()=>{FSPORT=!FSPORT;fsLayout()};
+  $('#bch').onclick=()=>{CH.open=!CH.open;$('#stage').classList.toggle('co',CH.open);$('#fsc').hidden=!CH.open;if(CH.open){CH.unread=0;badge();const b=$('#fcm');b.scrollTop=b.scrollHeight}};
+  $('#shield').ondblclick=fsToggle;
+  const bindIn=(i,b)=>{const go=()=>{const t=$(i).value;$(i).value='';chatSend(t)};$(b).onclick=go;$(i).onkeydown=e=>{if(e.key=='Enter')go()};$(i).oninput=e=>{if(e.target.value.trim())typPing()}};
+  bindIn('#cmi','#cms');bindIn('#fci','#fcs');
+  sessT=setInterval(sessPoll,1000);hostT=setInterval(hostTick,700);sessPoll()};
+
+/* ───── Список: приглашения, активная сессия, кого позвать ───── */
+const shareLink=l=>{const u='https://t.me/share/url?url='+encodeURIComponent(l)+'&text='+encodeURIComponent(tr('w_share_text'));tg.openTelegramLink?tg.openTelegramLink(u):open(u)};
+VIEWS.watch=function(){Promise.all([api('session/pending'),api('friends')]).then(([p,f])=>{
+  if(view!='watch'||!Array.isArray(p.invites)||!Array.isArray(f))return;PEND=p;pendSig=sigOf(p);banner();
+  const nm=u=>esc(u?.name||tr('buff')),link=p.sent.find(i=>i.link),sent=p.sent.filter(i=>!i.link);
+  f.sort((a,b)=>(b.online?1:0)-(a.online?1:0));                                   // кто в сети — выше
+  app.innerHTML=`${p.active?`<div class="sec"><h2>${tr('w_active')}</h2><div class="row" style="align-items:center;cursor:default"><div class="av s">${esc(p.active.peer?.avatar||'🎬')}</div><div style="flex:1;min-width:0"><div class="t">${nm(p.active.peer)}</div></div><button class="go" data-wo="${p.active.id}">${tr('w_open')}</button></div></div>`:''}
+${sent.map(i=>`<div class="sec"><div class="hd" style="margin:0"><span>${tr('w_sent_to',{n:nm(i.to)})}</span><button class="ghost" data-wc="${i.id}">${tr('cancel')}</button></div></div>`).join('')}
+<div class="sec"><h2>${tr('w_link_t')}</h2><p class="mu" style="margin-bottom:10px">${tr('w_link_hint')}</p>
+${link?`<div class="mu" style="margin-bottom:6px">${tr('w_link_wait')}</div><div class="mu" style="word-break:break-all;color:var(--go);margin-bottom:10px">${esc(link.link)}</div><div class="wrap" style="margin:0"><button class="go" id="ls">${tr('w_share')}</button><button class="ghost" id="lc">${tr('copy')}</button><button class="ghost" data-wc="${link.id}">${tr('cancel')}</button></div>`
+:`<button class="go" id="lk" style="width:100%">${tr('w_link_b')}</button>`}</div>
+<div class="sec"><h2>${tr('w_or_friend')}</h2>${f.length?`<div class="list">${f.map(x=>`<div class="row" data-wi="${x.uid}" style="align-items:center;padding:12px"><div class="av s">${esc(x.avatar)}</div><div style="flex:1;min-width:0"><div class="t">${nm(x)}</div><div class="m">${onl(x)}</div></div><span class="badge">${tr('w_call')} 🎬</span></div>`).join('')}</div>`:`<p class="mu">${tr('w_no_friends')}</p>`}</div>`;
+  $$('[data-wo]').forEach(b=>b.onclick=()=>{SID=+b.dataset.wo;nav('session','v_watch')});
+  $$('[data-wc]').forEach(b=>b.onclick=async()=>{await post('session/stop',{id:+b.dataset.wc});await pendPoll();render()});
+  $$('[data-wi]').forEach(e=>e.onclick=()=>inviteTo(e.dataset.wi));
+  if($('#lk'))$('#lk').onclick=async()=>{const r=await post('session/link',{});if(r.error){say(errText(r));return}await pendPoll();shareLink(r.link)};
+  if($('#ls'))$('#ls').onclick=()=>shareLink(link.link);
+  if($('#lc'))$('#lc').onclick=e=>copyCode(e.target,link.link);
+  clearInterval(chatT);chatT=setInterval(pendPoll,2500)})};                        // пока висит приглашение, смотрим, принял ли собеседник
+
+async function inviteTo(id){const r=await post('session/invite',{fid:+id});if(r.error){say(errText(r));return}await pendPoll();nav('watch','v_watch')}
+async function acceptInv(id){const r=await post('session/respond',{id:+id,accept:1});if(r.error){say(errText(r));pendPoll();return}SID=+id;await pendPoll();nav('session','v_watch')}
+async function declineInv(id){await post('session/respond',{id:+id,accept:0});await pendPoll();if(view=='watch')render()}
+async function pendPoll(){if(document.hidden)return;const r=await api('session/pending');if(!(r&&Array.isArray(r.invites)))return;
+  const had=PEND.active,sig=sigOf(r);PEND=r;banner();
+  if(!had&&r.active&&view=='watch'){SID=r.active.id;nav('session','v_watch');return}   // собеседник принял приглашение: сразу заходим
+  if(sig!==pendSig){pendSig=sig;if(view=='watch')render()}}
+function banner(){const b=$('#inv');if(!b)return;const nm=u=>esc(u?.name||tr('buff'));let h='';
+  PEND.invites.forEach(i=>h+=`<div class="ib"><span>🎬 ${tr('w_invite_from',{n:nm(i.from)})}</span><button class="go" data-ia="${i.id}">${tr('w_accept')}</button><button class="ghost" data-ix="${i.id}">✕</button></div>`);
+  if(PEND.active&&view!='session')h+=`<div class="ib"><span>🎬 ${tr('w_with',{n:nm(PEND.active.peer)})}</span><button class="go" data-io="${PEND.active.id}">${tr('w_open')}</button></div>`;
+  b.innerHTML=h;
+  b.querySelectorAll('[data-ia]').forEach(e=>e.onclick=()=>acceptInv(e.dataset.ia));
+  b.querySelectorAll('[data-ix]').forEach(e=>e.onclick=()=>declineInv(e.dataset.ix));
+  b.querySelectorAll('[data-io]').forEach(e=>e.onclick=()=>{SID=+e.dataset.io;nav('session','v_watch')})}
+
+/* Пинг и опрос — только пока приложение открыто на экране */
+setInterval(()=>{if(!document.hidden)api('ping')},45000);
+document.addEventListener('visibilitychange',()=>{document.documentElement.classList.toggle('pause',document.hidden);if(!document.hidden)api('ping')});
+function boot(){load().then(async()=>{
+  if(ME0.lang&&I18N[ME0.lang]&&ME0.lang!==S.lang){S.lang=ME0.lang;saveS();applyS()}   // язык, сохранённый на сервере, главнее
+  else if(ME0.lang!==S.lang)post('me',{lang:S.lang});
+  nav(S.start);await pendPoll();
+  if(PEND.active&&PEND.active.fresh&&view!='session'){SID=PEND.active.id;nav('session','v_watch')}   // сессия идёт прямо сейчас: открываем её сразу
+  setInterval(pendPoll,6000)})}
+if(IN_TG||getTok())boot();else showLogin();
+</script></body></html>
