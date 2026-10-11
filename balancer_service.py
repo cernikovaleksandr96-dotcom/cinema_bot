@@ -1,18 +1,3 @@
-"""
-balancer_service.py — балансеры плееров для MY CINEMA.
-
-Публичный API (имена и параметры совпадают с вызовами в bot.py):
-    get_anime_player(shikimori_id, session=None)  -> str | None   (Kodik, аниме)
-    get_movie_balancer(tmdb_id, session=None)     -> str | None   (Kodik по imdb -> иначе iframe Collaps)
-
-Совместимость со старым bot.py (оставлены прежние имена):
-    get_kodik_player(shikimori_id, session=None, imdb_id=None)
-    get_collaps_player(tmdb_id, session=None, imdb_id=None, name=None)
-    find_shikimori_id(names, year, session=None)
-
-Все возвращаемые ссылки начинаются с "https://".
-Если передать session=None, сессия создаётся и закрывается внутри функции.
-"""
 import asyncio
 import logging
 import os
@@ -24,15 +9,8 @@ import aiohttp
 
 log = logging.getLogger("balancer")
 
-# ───────────────────────── Настройки ─────────────────────────
-DEFAULT_KODIK_TOKEN = "4c0708026894b9159740e531390fbc2a"
 KODIK_MIRRORS = ("https://kodikapi.com", "https://kodik-api.com")
 SHIKI_MIRRORS = ("https://shikimori.one", "https://shikimori.io")
-# Collaps: прямой iframe без JSON API (JSON API требует платный токен).
-# Домен v.collaps.org сейчас припаркован (показывает «created by ParkLogic»), поэтому каждый шаблон
-# проверяется перед выдачей. Свои шаблоны можно задать в .env через "|":
-#   COLLAPS_EMBED_TEMPLATES=https://host1/embed/imdb/{imdb_id}|https://host2/embed/movie/{tmdb_id}
-# Доступные подстановки: {tmdb_id}, {imdb_id}.
 COLLAPS_TEMPLATES = (
     "https://api.atomics.ws/embed/imdb/{imdb_id}",
     "https://api.bhcesh.me/embed/movie/{tmdb_id}",
@@ -42,16 +20,14 @@ DEAD_PAGE_MARKERS = ("parklogic", "this page has been created", "domain is for s
                      "account suspended", "default web site page")
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=5, connect=3)
-CACHE_TTL_OK = 3600        # найденная ссылка живёт час
-CACHE_TTL_MISS = 300       # «не найдено» помним 5 минут, чтобы не долбить API
+CACHE_TTL_OK = 3600
+CACHE_TTL_MISS = 300
 NET_ERRORS = (aiohttp.ClientError, asyncio.TimeoutError, socket.gaierror, OSError)
 
-_cache: dict = {}          # key -> (expires_at, value)
+_cache: dict = {}
 
 
-# ───────────────────────── Утилиты ─────────────────────────
 def normalize_url(url) -> str | None:
-    """'//kodik.info/x' -> 'https://kodik.info/x'; 'http://' -> 'https://'."""
     if not url:
         return None
     url = str(url).strip()
@@ -66,14 +42,15 @@ def normalize_url(url) -> str | None:
     return "https://" + url.lstrip("/")
 
 
-def _kodik_token() -> str:
-    """Токен из KODIK_TOKEN, если он похож на настоящий (32 hex-символа), иначе публичный дефолтный."""
+def _kodik_token() -> str | None:
     tok = (os.getenv("KODIK_TOKEN") or "").strip().strip("'\"")
     if re.fullmatch(r"[0-9a-fA-F]{32}", tok):
         return tok
     if tok:
-        log.warning("KODIK_TOKEN в .env выглядит некорректно — использую публичный токен по умолчанию")
-    return DEFAULT_KODIK_TOKEN
+        log.warning("KODIK_TOKEN в .env выглядит некорректно (ожидается 32 hex-символа)")
+    else:
+        log.warning("KODIK_TOKEN не задан в .env — поиск в Kodik отключён")
+    return None
 
 
 def _cache_get(key):
@@ -85,14 +62,13 @@ def _cache_get(key):
 
 def _cache_put(key, value):
     _cache[key] = (time.time() + (CACHE_TTL_OK if value else CACHE_TTL_MISS), value)
-    if len(_cache) > 2000:   # простая защита от разрастания
+    if len(_cache) > 2000:
         now = time.time()
         for k in [k for k, v in _cache.items() if v[0] <= now]:
             _cache.pop(k, None)
 
 
 class _Sess:
-    """Контекст: использует переданную сессию или создаёт временную."""
     def __init__(self, session):
         self._given = session
         self._own = None
@@ -109,7 +85,6 @@ class _Sess:
 
 
 async def _get_json(ses: aiohttp.ClientSession, url: str, params: dict, headers: dict | None = None):
-    """GET -> (status, json|None). Бросает NET_ERRORS при сетевых сбоях."""
     async with ses.get(url, params=params, headers=headers, timeout=REQUEST_TIMEOUT) as r:
         try:
             data = await r.json(content_type=None)
@@ -118,7 +93,6 @@ async def _get_json(ses: aiohttp.ClientSession, url: str, params: dict, headers:
         return r.status, data
 
 
-# ───────────────────────── Kodik ─────────────────────────
 def _is_token_error(status: int, data) -> bool:
     err = str((data or {}).get("error") or "").lower() if isinstance(data, dict) else ""
     return status in (401, 403) or "токен" in err or "token" in err
@@ -135,11 +109,10 @@ def _pick_link(data) -> str | None:
 
 
 async def _kodik_one(ses: aiohttp.ClientSession, mirror: str, token: str, query: dict):
-    """Один запрос к одному зеркалу -> ("ok", link|None) | ("token", None) | ("fail", None)."""
     params = {"token": token, "with_episodes": "false", **query}
     try:
         status, data = await _get_json(ses, f"{mirror}/search", params)
-    except NET_ERRORS as e:               # DNS-блокировка, таймаут, обрыв
+    except NET_ERRORS as e:
         log.warning("Kodik %s недоступен (%s: %s)", mirror, type(e).__name__, e)
         return "fail", None
     if _is_token_error(status, data):
@@ -150,33 +123,27 @@ async def _kodik_one(ses: aiohttp.ClientSession, mirror: str, token: str, query:
         log.warning("Kodik %s: HTTP %s", mirror, status)
         return "fail", None
     link = _pick_link(data)
-    log.info("Kodik %s %s -> %s", mirror, query, link)
+    log.info("Kodik %s -> %s", mirror, link)
     return "ok", link
 
 
 async def _kodik_search(ses: aiohttp.ClientSession, **query) -> str | None:
-    """
-    Поиск в Kodik: зеркала опрашиваются ОДНОВРЕМЕННО, побеждает первое ответившее.
-    Токены: сначала из .env (если валиден), затем публичный по умолчанию.
-    """
-    tokens = [_kodik_token()]
-    if DEFAULT_KODIK_TOKEN not in tokens:
-        tokens.append(DEFAULT_KODIK_TOKEN)
-    for token in tokens:
-        tasks = [asyncio.ensure_future(_kodik_one(ses, m, token, query)) for m in KODIK_MIRRORS]
-        try:
-            for fut in asyncio.as_completed(tasks):
-                kind, link = await fut
-                if kind == "ok":
-                    return link
-        finally:
-            for t in tasks:
-                t.cancel()
+    token = _kodik_token()
+    if not token:
+        return None
+    tasks = [asyncio.ensure_future(_kodik_one(ses, m, token, query)) for m in KODIK_MIRRORS]
+    try:
+        for fut in asyncio.as_completed(tasks):
+            kind, link = await fut
+            if kind == "ok":
+                return link
+    finally:
+        for t in tasks:
+            t.cancel()
     return None
 
 
 async def get_anime_player(shikimori_id: str, session: aiohttp.ClientSession = None) -> str | None:
-    """Ссылка на iframe-плеер Kodik по Shikimori ID или None."""
     sid = re.sub(r"\D", "", str(shikimori_id or ""))
     if not sid:
         return None
@@ -205,7 +172,6 @@ async def _kodik_by_imdb(imdb_id: str, session) -> str | None:
 
 
 async def _imdb_from_tmdb(tmdb_id: str, session) -> str | None:
-    """У Kodik нет поиска по TMDB ID, поэтому берём imdb_id у TMDB (нужен TMDB_KEY в .env)."""
     key_api = (os.getenv("TMDB_KEY") or "").strip()
     if not key_api:
         return None
@@ -222,14 +188,12 @@ async def _imdb_from_tmdb(tmdb_id: str, session) -> str | None:
     return None
 
 
-# ───────────────────────── Collaps (без JSON API) ─────────────────────────
 def _collaps_templates() -> list:
     raw = (os.getenv("COLLAPS_EMBED_TEMPLATES") or "").strip()
     return [t.strip() for t in raw.split("|") if t.strip()] if raw else list(COLLAPS_TEMPLATES)
 
 
 def collaps_candidates(tmdb_id: str, imdb_id: str | None = None) -> list:
-    """Список кандидатов-iframe без сетевых запросов (шаблоны, для которых не хватает ID, пропускаются)."""
     tid = re.sub(r"\D", "", str(tmdb_id or ""))
     imdb = str(imdb_id or "").strip()
     imdb = imdb if re.fullmatch(r"tt\d+", imdb) else ""
@@ -244,7 +208,6 @@ def collaps_candidates(tmdb_id: str, imdb_id: str | None = None) -> list:
 
 
 async def _embed_alive(ses: aiohttp.ClientSession, url: str) -> bool:
-    """Страница-плеер отвечает 200 и это не заглушка парковки домена. Это НЕ API Collaps, токен не нужен."""
     try:
         async with ses.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True,
                            headers={"User-Agent": "Mozilla/5.0 (MyCinemaBot)"}) as r:
@@ -262,7 +225,6 @@ async def _embed_alive(ses: aiohttp.ClientSession, url: str) -> bool:
 
 
 async def collaps_player(tmdb_id: str, session=None, imdb_id: str | None = None) -> str | None:
-    """Первый живой iframe-кандидат или None. Результат кэшируется."""
     cands = collaps_candidates(tmdb_id, imdb_id)
     if not cands:
         return None
@@ -272,20 +234,14 @@ async def collaps_player(tmdb_id: str, session=None, imdb_id: str | None = None)
         return val
     link = None
     async with _Sess(session) as ses:
-        alive = await asyncio.gather(*(_embed_alive(ses, u) for u in cands))   # параллельно, порядок приоритета сохраняется
+        alive = await asyncio.gather(*(_embed_alive(ses, u) for u in cands))
         link = next((u for u, ok_ in zip(cands, alive) if ok_), None)
     _cache_put(key, link)
     return link
 
 
-# ───────────────────────── Фильмы / сериалы ─────────────────────────
 async def get_movie_balancer(tmdb_id: str, session: aiohttp.ClientSession = None, *,
                              imdb_id: str | None = None) -> str | None:
-    """
-    1) Kodik (по imdb_id; если не передан — узнаём его у TMDB);
-    2) если Kodik ничего не нашёл — iframe Collaps, но только если страница-плеер реально отвечает.
-    None = плеера нет (бот покажет заглушку, а не мёртвый iframe).
-    """
     tid = re.sub(r"\D", "", str(tmdb_id or ""))
     if not tid:
         return None
@@ -294,7 +250,7 @@ async def get_movie_balancer(tmdb_id: str, session: aiohttp.ClientSession = None
         imdb = imdb_id or await _imdb_from_tmdb(tid, session)
         link = await _kodik_by_imdb(imdb, session) if imdb else None
     except Exception as e:
-        imdb = imdb_id                    # Kodik не должен ронять выдачу — есть запасной Collaps
+        imdb = imdb_id
         log.warning("Kodik для tmdb=%s упал: %s: %s", tid, type(e).__name__, e)
         link = None
 
@@ -307,13 +263,11 @@ async def get_movie_balancer(tmdb_id: str, session: aiohttp.ClientSession = None
     return link
 
 
-# ───────────────────────── Поиск Shikimori ID ─────────────────────────
 def _norm(s) -> str:
     return re.sub(r"[\W_]+", " ", str(s or "").lower()).strip()
 
 
 async def find_shikimori_id(names, year, session: aiohttp.ClientSession = None) -> str | None:
-    """Ищет аниме на Shikimori по списку названий; при наличии года предпочитает совпадение по году."""
     names = [n for n in (names or []) if n]
     year = str(year or "")[:4]
     headers = {"User-Agent": "MyCinemaBot/1.0"}
@@ -353,7 +307,6 @@ async def find_shikimori_id(names, year, session: aiohttp.ClientSession = None) 
     return None
 
 
-# ───────────────────────── Совместимость со старым bot.py ─────────────────────────
 async def get_kodik_player(shikimori_id: str, session: aiohttp.ClientSession = None,
                            imdb_id: str | None = None) -> str | None:
     link = await get_anime_player(shikimori_id, session)
