@@ -16,13 +16,21 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("bot")
 BASE = os.path.dirname(os.path.abspath(__file__))
 REMIND_HOUR = int(os.getenv("REMIND_HOUR", 19))
-TOKEN, TMDB, PORT = os.environ["BOT_TOKEN"], os.environ["TMDB_KEY"], int(os.getenv("PORT", 8080))
+
+
+def need_env(name):
+    v = (os.getenv(name) or "").strip()
+    if not v:
+        raise SystemExit(f"Не задана переменная {name}. Добавь её в .env (см. .env.example)")
+    return v
+
+
+TOKEN, TMDB, PORT = need_env("BOT_TOKEN"), need_env("TMDB_KEY"), int(os.getenv("PORT", 8080))
 URL = os.getenv("WEBAPP_URL", "auto")
 
-# ───────────────────────── БД ─────────────────────────
 db = sqlite3.connect("cinema.db"); db.row_factory = sqlite3.Row
-db.execute("PRAGMA journal_mode=WAL")       # чтения не блокируют запись
-db.execute("PRAGMA synchronous=NORMAL")     # коммит без лишнего fsync
+db.execute("PRAGMA journal_mode=WAL")
+db.execute("PRAGMA synchronous=NORMAL")
 db.executescript("""
 CREATE TABLE IF NOT EXISTS items(uid INT, tid INT, type TEXT, title TEXT, year TEXT, poster TEXT, genres TEXT,
  runtime INT DEFAULT 0, status TEXT, rating REAL, fav INT DEFAULT 0, date TEXT, mood TEXT, note TEXT,
@@ -43,16 +51,18 @@ CREATE TABLE IF NOT EXISTS web_sessions(token TEXT PRIMARY KEY, uid INT, created
 CREATE TABLE IF NOT EXISTS accounts(login TEXT PRIMARY KEY, uid INT UNIQUE, pwd TEXT, created REAL);
 """)
 
+
 def addcol(table, col):
     try: db.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
     except sqlite3.OperationalError: pass
+
 
 for c in ("title TEXT", "photo TEXT", "rating REAL"): addcol("notes", c)
 for c in ("code TEXT", "nick TEXT", "avatar TEXT", "vis TEXT DEFAULT 'friends'", "show_online INT DEFAULT 1",
           "seen INT DEFAULT 0", "lang TEXT DEFAULT 'ru'"): addcol("users", c)
 for c in ("title_en TEXT", "genres_en TEXT"): addcol("items", c)
-addcol("sessions", "token TEXT")   # ссылка-приглашение
-addcol("smsgs", "img TEXT")         # фото в чате сессии (jpeg data-url)
+addcol("sessions", "token TEXT")
+addcol("smsgs", "img TEXT")
 db.executescript("""
 CREATE INDEX IF NOT EXISTS ix_msg ON messages(a,b,id);
 CREATE INDEX IF NOT EXISTS ix_msg_unread ON messages(b,a,rd);
@@ -62,7 +72,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_sess_tok ON sessions(token);
 """)
 db.commit()
 
-# ───────────────────────── Тексты бота ─────────────────────────
 BT = {
     "ru": {
         "open": "🎬 Открыть MY CINEMA", "buff": "Киноман",
@@ -123,7 +132,8 @@ BT = {
         "watch_none": "😔 No player is available for this title right now. Try later or paste your own link in the app.",
     },
 }
-LANG = {}   # кэш языков пользователей
+LANG = {}
+
 
 def lang_of(uid):
     if uid not in LANG:
@@ -131,15 +141,17 @@ def lang_of(uid):
         LANG[uid] = (r and r[0]) or "ru"
     return LANG[uid]
 
+
 def bt(uid, key, **f):
     return BT[lang_of(uid)][key].format(**f)
 
-# ───────────────────────── Пользователи ─────────────────────────
+
 def new_code():
     al = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     while True:
         c = "".join(secrets.choice(al) for _ in range(8))
         if not db.execute("SELECT 1 FROM users WHERE code=?", (c,)).fetchone(): return c
+
 
 def ensure_user(uid, name=""):
     db.execute("INSERT OR IGNORE INTO users(uid,name) VALUES(?,?)", (uid, name))
@@ -147,30 +159,35 @@ def ensure_user(uid, name=""):
         db.execute("UPDATE users SET code=? WHERE uid=?", (new_code(), uid))
     db.commit()
 
+
 for _r in db.execute("SELECT uid FROM users WHERE code IS NULL").fetchall():
     db.execute("UPDATE users SET code=? WHERE uid=?", (new_code(), _r["uid"]))
 db.commit()
+
 
 def brief(u):
     on = bool(u["show_online"]) and time.time() - (u["seen"] or 0) < 120
     return {"uid": u["uid"], "name": u["nick"] or u["name"] or "", "avatar": u["avatar"] or "🎬",
             "vis": u["vis"] or "friends", "online": on, "seen": (u["seen"] or None) if u["show_online"] else None}
 
+
 def are_friends(a, b):
     return bool(db.execute("SELECT 1 FROM friends WHERE a=? AND b=?", (a, b)).fetchone())
 
-KNOWN, SEEN = set(), {}   # чтобы не писать в БД на каждый запрос
 
-WEB_TTL = 90 * 86400                      # сессия сайта живёт 90 дней
+KNOWN, SEEN = set(), {}
+
+WEB_TTL = 90 * 86400
+
 
 def auth(request):
     tok = request.headers.get("X-Token", "")
-    if tok:                                   # вход с сайта
+    if tok:
         r = db.execute("SELECT uid,created FROM web_sessions WHERE token=?", (tok,)).fetchone()
         if not r or time.time() - r["created"] > WEB_TTL: raise web.HTTPUnauthorized()
         uid = r["uid"]
         if uid not in KNOWN: ensure_user(uid); KNOWN.add(uid)
-    else:                                     # вход из Telegram Mini App
+    else:
         try:
             d = dict(parse_qsl(request.headers.get("X-Init", ""), keep_blank_values=True))
             h = d.pop("hash", "")
@@ -185,14 +202,15 @@ def auth(request):
         if uid not in KNOWN:
             ensure_user(uid, u.get("first_name", "")); KNOWN.add(uid)
     now = int(time.time())
-    if now - SEEN.get(uid, 0) >= 30:          # раньше: 2 коммита на КАЖДЫЙ запрос
+    if now - SEEN.get(uid, 0) >= 30:
         SEEN[uid] = now
         db.execute("UPDATE users SET seen=? WHERE uid=?", (now, uid)); db.commit()
     return uid
 
-# ───────────────────────── TMDB: общая сессия + кэш ─────────────────────────
+
 HTTP = None
 CACHE = {}
+
 
 async def tmdb(path, lang="ru", ttl=600, **p):
     key = (path, lang, tuple(sorted(p.items())))
@@ -213,6 +231,7 @@ async def tmdb(path, lang="ru", ttl=600, **p):
             if len(CACHE) > 600: CACHE.clear()
     return data
 
+
 def card(x, t=None):
     t = t or x.get("media_type")
     return dict(tid=x["id"], type=t, title=x.get("title") or x.get("name"),
@@ -220,43 +239,45 @@ def card(x, t=None):
         poster=x.get("poster_path") and "https://image.tmdb.org/t/p/w342" + x["poster_path"],
         overview=x.get("overview", ""), vote=round(x.get("vote_average") or 0, 1))
 
+
 def loc(r, lang):
-    """Подставляет название и жанры на нужном языке."""
     if lang == "en":
         r["title"] = r.get("title_en") or r["title"]
         r["genres"] = r.get("genres_en") or r["genres"]
     r.pop("title_en", None); r.pop("genres_en", None)
     return r
 
+
 async def backfill_en(rows):
-    """Старые записи сохранены только по-русски: один раз подтягиваем английские названия."""
     todo = [r for r in rows if not r.get("title_en")][:30]
     if not todo: return
     sem = asyncio.Semaphore(6)
     async def one(r):
         async with sem:
             d = await tmdb(f"{r['type']}/{r['tid']}", "en", 3600)
-        if not d: return                       # сеть недоступна: попробуем в следующий раз
+        if not d: return
         if "id" in d:
             r["title_en"] = d.get("title") or d.get("name") or r["title"]
             r["genres_en"] = ", ".join(g["name"] for g in d.get("genres", [])) or r["genres"]
-        else:                                  # 404: больше не пытаемся
+        else:
             r["title_en"], r["genres_en"] = r["title"], r["genres"]
         db.execute("UPDATE items SET title_en=?,genres_en=? WHERE uid=? AND tid=? AND type=?",
                    (r["title_en"], r["genres_en"], r["uid"], r["tid"], r["type"]))
     await asyncio.gather(*(one(r) for r in todo))
     db.commit()
 
-# ───────────────────────── API ─────────────────────────
+
 async def search(request):
     uid = auth(request)
     r = await tmdb("search/multi", lang_of(uid), 300, query=request.query.get("q", "")[:100])
     return web.json_response([card(x) for x in r.get("results", []) if x.get("media_type") in ("movie", "tv")][:12])
 
+
 async def trending(request):
     uid = auth(request)
     r = await tmdb("trending/all/week", lang_of(uid), 1800)
     return web.json_response([card(x) for x in r.get("results", []) if x.get("media_type") in ("movie", "tv")][:12])
+
 
 async def items(request):
     uid = auth(request); lang = lang_of(uid)
@@ -264,7 +285,9 @@ async def items(request):
     if lang == "en": await backfill_en(rows)
     return web.json_response([loc(r, lang) for r in rows])
 
+
 FIELDS = ("status", "rating", "fav", "date", "mood", "note", "season", "episode")
+
 
 async def save(request):
     uid = auth(request); b = await request.json()
@@ -280,17 +303,19 @@ async def save(request):
              ", ".join(g["name"] for g in ru.get("genres", [])),
              ", ".join(g["name"] for g in en.get("genres", [])) if "id" in en else None, rt, "want"))
     sets = {k: b[k] for k in FIELDS if k in b}
-    if sets:   # один UPDATE вместо отдельного на каждое поле
+    if sets:
         db.execute(f"UPDATE items SET {','.join(k + '=?' for k in sets)} WHERE uid=? AND tid=? AND type=?", (*sets.values(), uid, tid, t))
     if b.get("status") == "watched":
         db.execute("UPDATE items SET date=COALESCE(date,?) WHERE uid=? AND tid=? AND type=?", (str(date.today()), uid, tid, t))
     db.commit()
     return web.json_response({"ok": 1})
 
+
 async def remove(request):
     uid = auth(request); b = await request.json()
     db.execute("DELETE FROM items WHERE uid=? AND tid=? AND type=?", (uid, b["tid"], b["type"])); db.commit()
     return web.json_response({"ok": 1})
+
 
 async def rnd(request):
     uid = auth(request); q = request.query; lang = lang_of(uid)
@@ -300,15 +325,15 @@ async def rnd(request):
     if q.get("type"): rows = [r for r in rows if r["type"] == q["type"]]
     return web.json_response(random.choice(rows) if rows else None)
 
+
 async def discover(request):
-    """Подбор по фильтрам: тип, жанр, страна, годы, рейтинг, длительность, сортировка (TMDB discover)."""
     uid = auth(request); lang = lang_of(uid); q = request.query
     def num(k):
         try: return int(q[k])
         except (KeyError, ValueError): return None
     types = (q["type"],) if q.get("type") in ("movie", "tv") else ("movie", "tv")
     mx = num("max")
-    if mx: types = ("movie",)                 # длительность осмысленна только для фильмов
+    if mx: types = ("movie",)
     y1, y2, page = num("y1"), num("y2"), min(max(num("page") or 1, 1), 20)
     try: rv = min(max(float(q.get("rate") or 0), 0), 9.5)
     except ValueError: rv = 0
@@ -319,14 +344,14 @@ async def discover(request):
     tys, jobs = [], []
     for ty in types:
         gid = num("gm" if ty == "movie" else "gt")
-        if want_genre and gid is None: continue      # у этого типа такого жанра нет
+        if want_genre and gid is None: continue
         dk = "primary_release_date" if ty == "movie" else "first_air_date"
         p = {"page": page, "include_adult": "false",
              "sort_by": {"rate": "vote_average.desc", "new": dk + ".desc"}.get(sort, "popularity.desc"),
              "vote_count.gte": 300 if sort == "rate" else 100 if rv else 15}
         lo = f"{y1}-01-01" if y1 and 1870 < y1 < 2100 else None
         hi = f"{y2}-12-31" if y2 and 1870 < y2 < 2100 else None
-        if sort == "new": hi = min(hi, today) if hi else today     # без ещё не вышедших
+        if sort == "new": hi = min(hi, today) if hi else today
         if lo: p[dk + ".gte"] = lo
         if hi: p[dk + ".lte"] = hi
         if rv: p["vote_average.gte"] = rv
@@ -341,11 +366,12 @@ async def discover(request):
     out.sort(key=key, reverse=True)
     return web.json_response([card(x, ty) for x, ty in out])
 
+
 async def recs(request):
     uid = auth(request); lang = lang_of(uid)
     mine = {(r["tid"], r["type"]) for r in db.execute("SELECT tid,type FROM items WHERE uid=?", (uid,))}
     seeds = db.execute("SELECT tid,type FROM items WHERE uid=? AND rating>=8 ORDER BY rating DESC, date DESC LIMIT 6", (uid,)).fetchall()
-    res = await asyncio.gather(*(tmdb(f"{s['type']}/{s['tid']}/recommendations", lang, 1800) for s in seeds))  # параллельно
+    res = await asyncio.gather(*(tmdb(f"{s['type']}/{s['tid']}/recommendations", lang, 1800) for s in seeds))
     score = {}
     for s, r in zip(seeds, res):
         for x in r.get("results", [])[:15]:
@@ -355,15 +381,16 @@ async def recs(request):
     top = sorted(score.values(), key=lambda e: -e[0])[:12]
     return web.json_response({"seeds": len(seeds), "items": [c for _, c in top]})
 
-# ───────────────────────── Бесплатный просмотр (легально) ─────────────────────────
-AR = {}                                   # tid -> (до какого времени кэш, identifier или None)
+
+AR = {}
 AR_ID = re.compile(r"^[\w.\-]{1,100}$")
+
 
 def _norm(s):
     return re.sub(r"[\W_]+", " ", str(s or "").lower().replace("ё", "е")).strip()
 
+
 async def archive_find(t, tid):
-    """Ищет фильм в Internet Archive (коллекция feature_films, в основном общественное достояние)."""
     if t != "movie": return None
     hit = AR.get(tid)
     if hit and hit[0] > time.time(): return hit[1]
@@ -378,12 +405,12 @@ async def archive_find(t, tid):
                 ("q", q), ("fl[]", "identifier"), ("fl[]", "title"), ("fl[]", "year"), ("rows", "20"), ("output", "json")]) as r:
             docs = (await r.json(content_type=None))["response"]["docs"]
     except Exception as e:
-        print("archive error:", type(e).__name__); return None      # ошибку не кэшируем
+        print("archive error:", type(e).__name__); return None
     found = None
     for x in docs:
         tt = x.get("title"); tt = tt[0] if isinstance(tt, list) and tt else tt
         ry = str(x.get("year") or "")[:4]
-        nt = _norm(re.sub(r"\(\s*\d{4}\s*\)", "", str(tt or "")))      # «Название (1902)» -> «название»
+        nt = _norm(re.sub(r"\(\s*\d{4}\s*\)", "", str(tt or "")))
         if nt and any(nt == n or nt.startswith(n + " ") for n in names) and ry.isdigit() \
                 and abs(int(ry) - int(yr)) <= 1 and AR_ID.match(x.get("identifier", "")):
             found = x["identifier"]; break
@@ -391,22 +418,22 @@ async def archive_find(t, tid):
     if len(AR) > 2000: AR.clear()
     return found
 
-RT = {}                                   # (type, tid) -> (до какого времени кэш, список видео)
 
-RUTUBE_DEBUG = os.getenv("RUTUBE_DEBUG", "1") == "1"      # 1 = печатать в консоль сырой ответ Rutube и решение по каждому видео
-# Доверенные каналы. Rutube в поиске НЕ отдаёт флаг «официальный», поэтому доверие задаём по имени канала.
-# Свои каналы добавляй в .env: RUTUBE_TRUSTED_AUTHORS="Название канала,12345" (название или id автора, через запятую).
+RT = {}
+
+RUTUBE_DEBUG = os.getenv("RUTUBE_DEBUG", "1") == "1"
 TRUSTED_WORDS = ("мосфильм", "ленфильм", "союзмультфильм", "киностудия", "киноконцерн", "кинокомпания",
-                 "госфильмофонд", "стс", "премьер", "premier")                      # слова целиком, не части слов
+                 "госфильмофонд", "стс", "премьер", "premier")
 RUTUBE_TRUSTED = {s.strip().lower() for s in os.getenv("RUTUBE_TRUSTED_AUTHORS", "").split(",") if s.strip()}
-OFFICIAL_KEYS = ("is_official", "official", "is_verified", "verified", "is_official_channel")   # на случай, если флаг появится
+OFFICIAL_KEYS = ("is_official", "official", "is_verified", "verified", "is_official_channel")
 BLOCK_KEYS = ("is_hidden", "is_adult", "is_livestream", "is_audio", "is_paid", "paid")
+
 
 def rt_dbg(*a):
     if RUTUBE_DEBUG: print("[rutube]", *a, flush=True)
 
+
 def trusted_author(a):
-    """Канал доверенный: флаг от Rutube, id/название из RUTUBE_TRUSTED_AUTHORS или слово из TRUSTED_WORDS в названии."""
     if any(a.get(k) for k in OFFICIAL_KEYS): return "flag"
     nm = " " + _norm(a.get("name")) + " "
     for e in RUTUBE_TRUSTED:
@@ -415,21 +442,21 @@ def trusted_author(a):
         if " " + w + " " in nm: return "word:" + w
     return ""
 
+
 def title_ok(nt, names):
-    """Название фильма входит в заголовок видео: целиком (по границам слов) либо все его слова по отдельности."""
     for n in names:
         if " " + n + " " in nt: return True
         toks = n.split()
         if len(toks) >= 2 and all(" " + tk + " " in nt for tk in toks): return True
     return False
 
+
 async def rutube_find(title, year, media_type="movie", names=None):
-    """Полные видео с доверенных каналов Rutube -> [{"kind","src","title","dur"}]. Пишет в консоль, что вернул Rutube и почему видео принято/отброшено."""
     names = names or ({_norm(title)} - {""})
     if not names: return []
     key = ("rt", media_type, tuple(sorted(names)), str(year)); hit = RT.get(key)
     if hit and hit[0] > time.time(): return hit[1]
-    need = 40 * 60 if media_type == "movie" else 15 * 60   # фильм: от 40 минут, серия: от 15
+    need = 40 * 60 if media_type == "movie" else 15 * 60
     query = f"{title} {year}".strip()
     rt_dbg(f"search {media_type}: query={query!r} names={sorted(names)} min_duration={need}s trusted_env={sorted(RUTUBE_TRUSTED)}")
     try:
@@ -438,7 +465,7 @@ async def rutube_find(title, year, media_type="movie", names=None):
             raw = await r.text()
             rt_dbg("GET", str(r.url), "-> HTTP", r.status, "bytes:", len(raw))
             rt_dbg("RAW (first 3000 chars):", raw[:3000])
-            if r.status != 200: return []                          # ошибку не кэшируем
+            if r.status != 200: return []
             data = json.loads(raw)
     except Exception as e:
         print("[rutube] error:", type(e).__name__, e, flush=True); return []
@@ -465,15 +492,16 @@ async def rutube_find(title, year, media_type="movie", names=None):
                     "title": str(x.get("title") or "")[:90], "dur": int(dur // 60)})
         if len(out) >= 6: break
     rt_dbg(f"accepted: {len(out)}")
-    RT[key] = (time.time() + (21600 if out else 300), out)       # пустой результат помним лишь 5 минут
+    RT[key] = (time.time() + (21600 if out else 300), out)
     if len(RT) > 2000: RT.clear()
     return out
 
-VK_TOKEN = os.getenv("VK_TOKEN", "")      # токен пользователя VK с доступом к видео (в .env: VK_TOKEN=...)
+
+VK_TOKEN = os.getenv("VK_TOKEN", "")
 VK_PLAYER = re.compile(r"^https://(?:vk\.com|vkvideo\.ru)/video_ext\.php\?")
 
+
 async def vk_find(title, year, media_type="movie", names=None):
-    """Полные видео с доверенных сообществ VK Видео (video.search) -> [{"kind","src","title","dur"}]."""
     names = names or ({_norm(title)} - {""})
     if not names: return []
     if not VK_TOKEN:
@@ -499,7 +527,7 @@ async def vk_find(title, year, media_type="movie", names=None):
     out = []
     for idx, x in enumerate(resp.get("items") or []):
         oid = x.get("owner_id") or 0
-        g = groups.get(-oid) if oid < 0 else None                  # владелец-сообщество (свои пользователи не доверенные)
+        g = groups.get(-oid) if oid < 0 else None
         a = {"name": (g or {}).get("name"), "id": oid, "verified": (g or {}).get("verified")} if g else {}
         trust = trusted_author(a) if a else ""
         src = str(x.get("player") or "")
@@ -520,16 +548,16 @@ async def vk_find(title, year, media_type="movie", names=None):
     RT[key] = (time.time() + (21600 if out else 300), out)
     return out
 
+
 async def archive_player(tid):
     ident = await archive_find("movie", tid)
     return [{"kind": "archive", "src": f"https://archive.org/embed/{ident}", "title": "Internet Archive", "dur": 0}] if ident else []
 
+
 async def get_movie_players(title, year, media_type, shikimori_id=None, tmdb_id=None, names=None, fast=False):
-    """Единый менеджер: собирает плееры из всех легальных источников. Пустой список = «Пока недоступно / Вставь свою ссылку».
-    media_type: 'movie' | 'tv' | 'anime'. Аниме (или есть shikimori_id) ищется теми же источниками, что и сериалы."""
     mt = "tv" if (media_type == "anime" or shikimori_id) else media_type
     jobs = [] if fast else [rutube_find(title, year, mt, names), vk_find(title, year, mt, names)]
-    async def _bal():   # Kodik (аниме по Shikimori) + Kodik/Collaps для фильмов по TMDB -> iframe-плееры
+    async def _bal():
         imdb = None
         if tmdb_id:
             try:
@@ -552,8 +580,7 @@ async def get_movie_players(title, year, media_type, shikimori_id=None, tmdb_id=
     jobs.append(_bal())
     if mt == "movie" and tmdb_id and not fast: jobs.append(archive_player(tmdb_id))
     out, seen = [], set()
-    # у каждого источника свой потолок по времени: один тормозящий сервис не задерживает остальные
-    for r in await asyncio.gather(*(asyncio.wait_for(j, 7) for j in jobs), return_exceptions=True):   # сбой одного источника не ломает остальные
+    for r in await asyncio.gather(*(asyncio.wait_for(j, 7) for j in jobs), return_exceptions=True):
         if isinstance(r, Exception):
             log.warning("[players] source failed: %s %s", type(r).__name__, r); continue
         for p in r:
@@ -562,8 +589,8 @@ async def get_movie_players(title, year, media_type, shikimori_id=None, tmdb_id=
     out.sort(key=lambda p: order.index(p["kind"]))
     return out[:8]
 
+
 async def info(request):
-    """Трейлер (YouTube) и где смотреть легально (данные TMDB/JustWatch)."""
     uid = auth(request); lang = lang_of(uid)
     t = request.query.get("type"); tid = int(request.query["tid"]); reg = request.query.get("region", "EE")[:2].upper()
     if t not in ("movie", "tv"): raise web.HTTPBadRequest()
@@ -576,14 +603,15 @@ async def info(request):
     prov = lambda k: [{"name": p["provider_name"], "logo": "https://image.tmdb.org/t/p/w92" + p["logo_path"]}
                       for p in r.get(k, []) if p.get("logo_path")]
     free, seen_n = [], set()
-    for p in prov("free") + prov("ads"):                      # бесплатно и бесплатно с рекламой
+    for p in prov("free") + prov("ads"):
         if p["name"] not in seen_n: seen_n.add(p["name"]); free.append(p)
     return web.json_response({"trailer": vids[0]["key"] if vids else None, "link": r.get("link"), "free": free})
 
+
 PL_CACHE = {}
 
+
 async def players_api(request):
-    """Плееры отдельно от info, чтобы карточка открывалась сразу. fast=1 — только Kodik/Collaps (для мгновенного запуска)."""
     auth(request)
     t = request.query.get("type"); tid = int(request.query["tid"]); fast = request.query.get("fast") == "1"
     if t not in ("movie", "tv"): raise web.HTTPBadRequest()
@@ -597,7 +625,7 @@ async def players_api(request):
     year = (d.get("release_date") or d.get("first_air_date") or "")[:4]
     names = {_norm(title), _norm(d.get("original_title") or d.get("original_name"))} - {""}
     if not shiki and d.get("original_language") == "ja" and any(g.get("id") == 16 for g in d.get("genres", [])):
-        try:   # японская анимация -> Shikimori ID для Kodik (не дольше 4 секунд)
+        try:
             shiki = await asyncio.wait_for(
                 find_shikimori_id([d.get("original_title") or d.get("original_name"), title], year, HTTP), 4)
         except Exception as e:
@@ -612,14 +640,13 @@ async def players_api(request):
     PL_CACHE[ck] = (time.time() + (600 if players else 45), players)
     return web.json_response({"players": players})
 
-# ───────────────────────── Онлайн-кинотеатры: прямые ссылки на страницу фильма ─────────────────────────
-# Данные берём у api.kinopoisk.dev (поле watchability: сервис, логотип и ссылка именно на этот фильм).
-# Токен: KINOPOISK_TOKEN в .env (бесплатный, выдаёт @kinopoiskdev_bot).
+
 KP_TOKEN = os.getenv("KINOPOISK_TOKEN", "").strip()
 KP_API = "https://api.kinopoisk.dev"
 KP_FIELDS = ("id", "name", "alternativeName", "year", "type", "externalId", "watchability")
 KP_TV = {"tv-series", "animated-series", "anime"}
 CIN_CACHE = {}
+
 
 async def kp_get(path, params):
     try:
@@ -633,8 +660,8 @@ async def kp_get(path, params):
         log.warning("[cinemas] kinopoisk.dev %s: %s: %s", path, type(e).__name__, e)
         return None
 
+
 def kp_pick(docs, year, is_tv, names, need_name):
-    """Выбирает подходящий тайтл: год ±1 (защита от совпадения TMDB-id у фильма и сериала), тип, название."""
     best, best_s = None, 0
     for d in docs or []:
         s = 1
@@ -649,8 +676,8 @@ def kp_pick(docs, year, is_tv, names, need_name):
         if s > best_s: best, best_s = d, s
     return best
 
+
 async def cinemas_api(request):
-    """Онлайн-кинотеатры, где есть фильм/сериал, с прямыми ссылками. Отдельно от info, чтобы карточка открывалась сразу."""
     auth(request)
     t = request.query.get("type"); tid = int(request.query["tid"])
     if t not in ("movie", "tv"): raise web.HTTPBadRequest()
@@ -672,7 +699,7 @@ async def cinemas_api(request):
         if doc or not val: continue
         r = await kp_get("/v1.4/movie", sel + [(key, val), ("limit", 5)])
         doc = kp_pick((r or {}).get("docs"), year, is_tv, names, False)
-    if not doc:   # в базе нет связки с TMDB/IMDb -> ищем по названию и году
+    if not doc:
         for q in (title, orig):
             if doc or not q: continue
             r = await kp_get("/v1.4/movie/search", [("query", q), ("limit", 10)])
@@ -692,8 +719,8 @@ async def cinemas_api(request):
     CIN_CACHE[ck] = (time.time() + (6 * 3600 if out else 300), out)
     return web.json_response({"items": out})
 
+
 async def embed(request):
-    """Ссылка на Rutube / VK Видео -> данные для встроенного плеера."""
     auth(request); b = await request.json()
     raw = str(b.get("url") or "")
     m_ = URL_IN_TEXT.search(raw)
@@ -702,16 +729,19 @@ async def embed(request):
     if not m or m[0] not in ("rutube", "vk"): return web.json_response({"error": "unsupported"})
     return web.json_response({"kind": m[0], "vid": m[1]})
 
+
 async def invite(request):
     uid = auth(request)
     return web.json_response({"link": f"https://t.me/{ME['u']}?start=f{uid}"})
 
+
 async def friends(request):
     uid = auth(request)
-    unread = {r[0]: r[1] for r in db.execute("SELECT a,COUNT(*) FROM messages WHERE b=? AND rd=0 GROUP BY a", (uid,))}  # без N+1
+    unread = {r[0]: r[1] for r in db.execute("SELECT a,COUNT(*) FROM messages WHERE b=? AND rd=0 GROUP BY a", (uid,))}
     out = [{**brief(u), "unread": unread.get(u["uid"], 0)}
            for u in db.execute("SELECT u.* FROM friends f JOIN users u ON u.uid=f.b WHERE f.a=?", (uid,))]
     return web.json_response(out)
+
 
 async def friend_items(request):
     uid = auth(request); fid = int(request.query["fid"])
@@ -724,6 +754,7 @@ async def friend_items(request):
     rows = db.execute("SELECT tid,type,title,title_en,year,poster,genres,genres_en,runtime,status,rating FROM items WHERE uid=?", (fid,))
     return web.json_response([loc(dict(r), lang) for r in rows])
 
+
 async def feed(request):
     uid = auth(request); lang = lang_of(uid)
     seen = {(r["tid"], r["type"]) for r in db.execute("SELECT tid,type FROM items WHERE uid=? UNION SELECT tid,type FROM dismissed WHERE uid=?", (uid, uid))}
@@ -731,7 +762,7 @@ async def feed(request):
             for r in db.execute("SELECT tid,type FROM items WHERE uid=? AND (rating>=8 OR fav=1) ORDER BY RANDOM() LIMIT 3", (uid,)).fetchall()]
     jobs += [(t, tmdb(f"discover/{t}", lang, sort_by="vote_count.desc", page=random.randint(1, 15), **{"vote_average.gte": 7}))
              for t in ("movie", "tv")]
-    res = await asyncio.gather(*(j[1] for j in jobs))   # раньше: 5 запросов подряд, один за другим
+    res = await asyncio.gather(*(j[1] for j in jobs))
     pool = {}
     for (t, _), d in zip(jobs, res):
         for x in d.get("results", []):
@@ -740,10 +771,12 @@ async def feed(request):
     out = list(pool.values()); random.shuffle(out)
     return web.json_response(out[:20])
 
+
 async def dismiss(request):
     uid = auth(request); b = await request.json()
     db.execute("INSERT OR IGNORE INTO dismissed VALUES(?,?,?)", (uid, b["tid"], b["type"])); db.commit()
     return web.json_response({"ok": 1})
+
 
 async def settings(request):
     uid = auth(request)
@@ -751,9 +784,11 @@ async def settings(request):
         b = await request.json(); db.execute("UPDATE users SET remind=? WHERE uid=?", (int(b["remind"]), uid)); db.commit()
     return web.json_response({"remind": db.execute("SELECT remind FROM users WHERE uid=?", (uid,)).fetchone()[0]})
 
+
 async def notes(request):
     uid = auth(request)
     return web.json_response([dict(r) for r in db.execute("SELECT * FROM notes WHERE uid=? ORDER BY id DESC", (uid,))])
+
 
 async def note_save(request):
     uid = auth(request); b = await request.json()
@@ -765,16 +800,19 @@ async def note_save(request):
         db.execute("INSERT INTO notes(uid,text,created,title,photo,rating) VALUES(?,?,?,?,?,?)", (uid, tx, str(date.today()), t, ph or "", r))
     db.commit(); return web.json_response({"ok": 1})
 
+
 async def note_del(request):
     uid = auth(request); b = await request.json()
     db.execute("DELETE FROM notes WHERE id=? AND uid=?", (b["id"], uid)); db.commit()
     return web.json_response({"ok": 1})
+
 
 async def me(request):
     uid = auth(request)
     d = dict(db.execute("SELECT name,nick,avatar,vis,show_online,remind,code,lang FROM users WHERE uid=?", (uid,)).fetchone())
     d["vis"] = d["vis"] or "friends"; d["avatar"] = d["avatar"] or "🎬"; d["lang"] = d["lang"] or "ru"
     return web.json_response(d)
+
 
 async def me_set(request):
     uid = auth(request); b = await request.json()
@@ -793,9 +831,11 @@ async def me_set(request):
     db.commit()
     return web.json_response({"ok": 1})
 
+
 async def ping(request):
     auth(request)
     return web.json_response({"ok": 1})
+
 
 async def lookup(request):
     uid = auth(request)
@@ -804,6 +844,7 @@ async def lookup(request):
     if not t: return web.json_response({"error": "not_found"})
     if t["uid"] == uid: return web.json_response({"error": "self"})
     return web.json_response({**brief(t), "friend": are_friends(uid, t["uid"])})
+
 
 async def friend_add(request):
     uid = auth(request); b = await request.json()
@@ -822,10 +863,12 @@ async def friend_add(request):
         except Exception: pass
     return web.json_response({"ok": 1, "friend": brief(t)})
 
+
 async def friend_del(request):
     uid = auth(request); b = await request.json(); fid = int(b["uid"])
     db.execute("DELETE FROM friends WHERE (a=? AND b=?) OR (a=? AND b=?)", (uid, fid, fid, uid)); db.commit()
     return web.json_response({"ok": 1})
+
 
 async def chat_get(request):
     uid = auth(request); fid = int(request.query["fid"]); after = int(request.query.get("after", 0))
@@ -834,11 +877,11 @@ async def chat_get(request):
         rows = db.execute("SELECT id,a,text,ts FROM messages WHERE ((a=? AND b=?) OR (a=? AND b=?)) AND id>? ORDER BY id", (uid, fid, fid, uid, after)).fetchall()
     else:
         rows = db.execute("SELECT * FROM (SELECT id,a,text,ts FROM messages WHERE (a=? AND b=?) OR (a=? AND b=?) ORDER BY id DESC LIMIT 100) ORDER BY id", (uid, fid, fid, uid)).fetchall()
-    # опрос идёт каждые 3 сек: пишем в БД только если есть что отмечать (раньше UPDATE + commit каждый раз)
     if db.execute("SELECT 1 FROM messages WHERE a=? AND b=? AND rd=0 LIMIT 1", (fid, uid)).fetchone():
         db.execute("UPDATE messages SET rd=1 WHERE a=? AND b=? AND rd=0", (fid, uid)); db.commit()
     f = db.execute("SELECT * FROM users WHERE uid=?", (fid,)).fetchone()
     return web.json_response({"msgs": [{"id": r["id"], "me": r["a"] == uid, "text": r["text"], "ts": r["ts"]} for r in rows], "friend": brief(f)})
+
 
 async def chat_send(request):
     uid = auth(request); b = await request.json(); fid = int(b["fid"])
@@ -854,7 +897,7 @@ async def chat_send(request):
         except Exception: pass
     return web.json_response({"ok": 1, "id": cur.lastrowid})
 
-# ───────────────────────── Совместный просмотр ─────────────────────────
+
 YT_ID = re.compile(r"^[\w-]{11}$")
 VM_ID, VM_HASH = re.compile(r"^\d{5,12}$"), re.compile(r"^[0-9a-f]{6,16}$")
 RT_ID, RT_KEY = re.compile(r"^[0-9a-f]{32}$"), re.compile(r"^[\w-]{1,64}$")
@@ -866,19 +909,18 @@ URL_IN_TEXT = re.compile(r"https?://[^\s<>\"']+", re.I)
 REACT = {"👍", "😂", "😮", "❤️", "🔥"}
 SESS_ERR = {"state": "sess_state", "busy_me": "sess_busy_me", "busy_friend": "sess_busy_friend",
             "gone": "sess_gone", "self": "sess_self"}
-SSEEN, SWRITE = {}, {}    # когда участник последний раз опрашивал сессию (в памяти: не пишем в БД каждую секунду)
-STYP = {}   # когда участник последний раз печатал в чате сессии
-SCHAT, SNOTE, CTIME = {}, {}, {}   # id последнего сообщения чата / когда пушили в Telegram / антиспам
+SSEEN, SWRITE = {}, {}
+STYP = {}
+SCHAT, SNOTE, CTIME = {}, {}, {}
 LASTCLEAN = [0.0]
 WEB = None
 
-# ── Разбор ссылок ──
+
 def norm_file(url):
-    # приложение открыто по https: видео по http браузер всё равно заблокирует
     return "https://" + url[7:] if url[:7].lower() == "http://" else url
 
+
 def parse_media(url):
-    """По самой ссылке, без сети: ('yt'|'vimeo'|'rutube'|'file', id или url) либо None."""
     url = (url or "").strip()[:500]
     try: u = urlparse(url)
     except ValueError: return None
@@ -896,10 +938,9 @@ def parse_media(url):
     if host in ("vimeo.com", "player.vimeo.com"):
         i = p.index("video") + 1 if "video" in p[:-1] else next((n for n, x in enumerate(p) if VM_ID.match(x)), None)
         if i is None or i >= len(p) or not VM_ID.match(p[i]): return None
-        h = q.get("h") or (p[i + 1] if len(p) > i + 1 else "")      # закрытые ролики: id:hash
+        h = q.get("h") or (p[i + 1] if len(p) > i + 1 else "")
         return ("vimeo", p[i] + (":" + h if VM_HASH.match(h) else ""))
     if host in VK_HOSTS or host.endswith(tuple("." + x for x in VK_HOSTS)):
-        # vk.com/video-1_2, vkvideo.ru/video-1_2, vk.com/clip-1_2, vk.com/video?z=video-1_2%2F..., video_ext.php?oid=&id=&hash=
         if p and p[0] == "video_ext.php":
             o, i, hh = q.get("oid", ""), q.get("id", ""), q.get("hash", "")
             if re.fullmatch(r"-?\d{1,12}", o) and i.isdigit():
@@ -915,10 +956,11 @@ def parse_media(url):
         k = q.get("p", "")
         return ("rutube", p[i] + ("?p=" + k if RT_KEY.match(k) else ""))
     if (host == "dropbox.com" or host.endswith(".dropbox.com")) and VIDEO_EXT.search(u.path):
-        q.pop("dl", None); q["raw"] = "1"                               # страница Dropbox → прямая выдача файла
+        q.pop("dl", None); q["raw"] = "1"
         return ("file", norm_file(u._replace(query=urlencode(q)).geturl()))
     if VIDEO_EXT.search(u.path): return ("file", norm_file(url))
     return None
+
 
 def _public_ip(ip):
     try: a = ipaddress.ip_address(ip)
@@ -926,15 +968,15 @@ def _public_ip(ip):
     if a.version == 6 and a.ipv4_mapped: a = a.ipv4_mapped
     return a.is_global and not a.is_multicast
 
+
 def host_ok(host):
-    """Сервер не должен ходить во внутреннюю сеть (роутер, ngrok на :4040 и т.д.)."""
     h = (host or "").strip("[]").lower()
     try: ipaddress.ip_address(h)
     except ValueError: return bool(h) and h != "localhost" and not h.endswith((".local", ".internal", ".localhost"))
     return _public_ip(h)
 
+
 class SafeResolver(aiohttp.abc.AbstractResolver):
-    """Проверяет адрес в момент подключения: защита и от подмены DNS (rebinding)."""
     def __init__(self): self._r = aiohttp.ThreadedResolver()
     async def resolve(self, host, port=0, family=socket.AF_INET):
         ok = [r for r in await self._r.resolve(host, port, family) if _public_ip(r["host"])]
@@ -942,11 +984,12 @@ class SafeResolver(aiohttp.abc.AbstractResolver):
         return ok
     async def close(self): await self._r.close()
 
+
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 VIDEO_CT = ("application/vnd.apple.mpegurl", "application/x-mpegurl", "audio/mpegurl")
 
+
 async def fetch_page(url, hops=4):
-    """('direct', url) если ссылка сама отдаёт видео; ('html', url, text) для страницы; иначе None."""
     for _ in range(hops + 1):
         u = urlparse(url)
         if u.scheme not in ("http", "https") or not host_ok(u.hostname): return None
@@ -965,12 +1008,13 @@ async def fetch_page(url, hops=4):
             return ("html", url, bytes(buf).decode(r.charset or "utf-8", "ignore"))
     return None
 
+
 def _attr(tag, name):
     m = re.search(r"""\b%s\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""" % name, tag, re.I)
     return (m.group(1) or m.group(2) or m.group(3)) if m else None
 
+
 def extract_media(html, base):
-    """Ищет видео на странице: og:video, <video>/<source>, <iframe> с YouTube/Vimeo/Rutube, JSON-LD, прямые ссылки."""
     cands = []
     def add(u):
         if not u: return
@@ -992,10 +1036,11 @@ def extract_media(html, base):
         if m: return m
     return None
 
+
 VK_EMBED_HASH = re.compile(r"""video_ext\.php\?[^"'\s<>]*?hash=([0-9a-f]{6,24})|["']embed_hash["']\s*:\s*["']([0-9a-f]{6,24})["']""", re.I)
 
+
 async def vk_add_hash(vid):
-    """Для встраивания VK нужен hash: если его нет в ссылке, пробуем достать со страницы ролика (для открытых видео)."""
     oid, i = vid.split("_", 1)
     for host in ("vk.com", "vkvideo.ru"):
         try: page = await fetch_page(f"https://{host}/video{oid}_{i}")
@@ -1005,6 +1050,7 @@ async def vk_add_hash(vid):
         m = VK_EMBED_HASH.search(unescape(page[2]).replace("\\/", "/").replace("&amp;", "&"))
         if m: return vid + ":" + (m.group(1) or m.group(2))
     return vid
+
 
 async def resolve_media(url):
     m = parse_media(url)
@@ -1018,7 +1064,7 @@ async def resolve_media(url):
     if page[0] == "direct": return ("file", norm_file(page[1]))
     return extract_media(page[2], page[1])
 
-# ── Вспомогательное ──
+
 def urow(uid): return db.execute("SELECT * FROM users WHERE uid=?", (uid,)).fetchone()
 def ubrief(uid):
     r = urow(uid)
@@ -1028,27 +1074,32 @@ def who(uid, viewer):
     return (b and b["name"]) or BT[lang_of(viewer)]["buff"]
 def jerr(code): return web.json_response({"error": code})
 
+
 def mine_session(uid, sid):
     s = db.execute("SELECT * FROM sessions WHERE id=?", (sid,)).fetchone()
     if not s or uid not in (s["host"], s["guest"]):
         raise web.HTTPNotFound(text='{"error":"gone"}', content_type="application/json")
     return s
 
+
 def busy(uid):
     return bool(db.execute("SELECT 1 FROM sessions WHERE status='active' AND (host=? OR guest=?)", (uid, uid)).fetchone())
+
 
 def bump(sid, **kw):
     cols = "".join(f"{k}=?," for k in kw)
     db.execute(f"UPDATE sessions SET {cols}ver=ver+1 WHERE id=?", (*kw.values(), sid)); db.commit()
 
+
 def sweep():
     now = time.time()
     n = db.execute("UPDATE sessions SET status='ended',ver=ver+1 WHERE status IN ('invited','open') AND created<?", (now - 86400,)).rowcount
     n += db.execute("UPDATE sessions SET status='ended',ver=ver+1 WHERE status='active' AND MAX(hseen,gseen,created)<?", (now - 7200,)).rowcount
-    if now - LASTCLEAN[0] > 60:    # чат живёт, пока жива сессия
+    if now - LASTCLEAN[0] > 60:
         LASTCLEAN[0] = now
         n += db.execute("DELETE FROM smsgs WHERE sid IN (SELECT id FROM sessions WHERE status='ended')").rowcount
     if n: db.commit()
+
 
 def touch(s, uid):
     now, k = time.time(), (s["id"], uid)
@@ -1058,10 +1109,12 @@ def touch(s, uid):
         col = "hseen" if uid == s["host"] else "gseen"
         db.execute(f"UPDATE sessions SET {col}=? WHERE id=?", (now, s["id"])); db.commit()
 
+
 def chat_last(sid):
     if sid not in SCHAT:
         SCHAT[sid] = db.execute("SELECT MAX(id) FROM smsgs WHERE sid=?", (sid,)).fetchone()[0] or 0
     return SCHAT[sid]
+
 
 def sess_kb(uid, sid):
     L = lang_of(uid)
@@ -1070,7 +1123,7 @@ def sess_kb(uid, sid):
          InlineKeyboardButton(text=BT[L]["btn_decline"], callback_data=f"sd:{sid}")],
         [InlineKeyboardButton(text=BT[L]["open"], web_app=WebAppInfo(url=URL))]])
 
-# ── Принятие приглашений (из приложения, из кнопки в чате бота, по ссылке) ──
+
 async def accept_session(uid, sid):
     s = db.execute("SELECT * FROM sessions WHERE id=?", (sid,)).fetchone()
     if not s or s["guest"] != uid or s["status"] != "invited": return "state"
@@ -1080,6 +1133,7 @@ async def accept_session(uid, sid):
     try: await BOT.send_message(s["host"], bt(s["host"], "sess_accepted", name=who(uid, s["host"])), reply_markup=kb(s["host"]))
     except Exception: pass
     return "ok"
+
 
 async def join_by_token(uid, token):
     s = db.execute("SELECT * FROM sessions WHERE token=?", (token[:64],)).fetchone()
@@ -1092,7 +1146,7 @@ async def join_by_token(uid, token):
     except Exception: pass
     return "ok", s["host"]
 
-# ── API ──
+
 async def s_invite(request):
     uid = auth(request); b = await request.json(); fid = int(b["fid"])
     if not are_friends(uid, fid): return jerr("not_friends")
@@ -1106,8 +1160,8 @@ async def s_invite(request):
     except Exception: pass
     return web.json_response({"ok": 1, "id": cur.lastrowid})
 
+
 async def s_link(request):
-    """Ссылка-приглашение: подходит и тем, кто ещё не в друзьях. Открывается в боте → сразу в сессии."""
     uid = auth(request); sweep()
     if busy(uid): return jerr("busy_me")
     r = db.execute("SELECT token FROM sessions WHERE status='open' AND host=?", (uid,)).fetchone()
@@ -1116,6 +1170,7 @@ async def s_link(request):
         tok = secrets.token_urlsafe(9)
         db.execute("INSERT INTO sessions(host,guest,status,created,token) VALUES(?,0,'open',?,?)", (uid, time.time(), tok)); db.commit()
     return web.json_response({"ok": 1, "link": f"https://t.me/{ME['u']}?start=w{tok}"})
+
 
 async def s_pending(request):
     uid = auth(request); sweep()
@@ -1129,6 +1184,7 @@ async def s_pending(request):
            "fresh": max(a["hseen"] or 0, a["gseen"] or 0) > time.time() - 180} if a else None
     return web.json_response({"invites": inv, "sent": sent, "active": act})
 
+
 async def s_respond(request):
     uid = auth(request); b = await request.json(); sid = int(b["id"]); s = mine_session(uid, sid)
     if not b.get("accept"):
@@ -1136,6 +1192,7 @@ async def s_respond(request):
         bump(sid, status="ended"); return web.json_response({"ok": 1})
     code = await accept_session(uid, sid)
     return web.json_response({"ok": 1}) if code == "ok" else jerr(code)
+
 
 async def s_get(request):
     uid = auth(request); s = mine_session(uid, int(request.query["id"])); v = int(request.query.get("v", 0))
@@ -1149,19 +1206,20 @@ async def s_get(request):
         "url": s["url"], "kind": s["kind"], "vid": s["vid"], "hr": s["hr"], "gr": s["gr"],
         "started": s["started"], "playing": s["playing"], "pos": s["pos"], "upd": s["upd"]})
 
+
 async def s_media(request):
     uid = auth(request); b = await request.json(); sid = int(b["id"]); s = mine_session(uid, sid)
     if s["host"] != uid or s["status"] != "active": return jerr("state")
     raw = str(b.get("url") or "")
-    m_ = URL_IN_TEXT.search(raw)                       # можно вставить хоть весь текст «смотри: https://…»
+    m_ = URL_IN_TEXT.search(raw)
     url = (m_.group(0) if m_ else raw).strip().rstrip(".,;)")[:500]
     m = await resolve_media(url)
     if not m: return jerr("unsupported")
-    s = mine_session(uid, sid)                          # пока искали видео, сессию могли завершить
+    s = mine_session(uid, sid)
     if s["status"] != "active": return jerr("state")
-    # ведущий выбрал видео сам, поэтому «готов» у него сразу; гостю остаётся нажать одну кнопку
     bump(sid, url=url, kind=m[0], vid=m[1], hr=1, gr=0, started=0, playing=0, pos=0, upd=0)
     return web.json_response({"ok": 1})
+
 
 async def s_ready(request):
     uid = auth(request); b = await request.json(); s = mine_session(uid, int(b["id"]))
@@ -1170,12 +1228,12 @@ async def s_ready(request):
     if s["started"]: return web.json_response({"ok": 1})
     host = s["host"] == uid; v = 1 if b.get("ready") else 0
     hr, gr = (v, s["gr"]) if host else (s["hr"], v)
-    if hr and gr: bump(s["id"], hr=1, gr=1, started=1, playing=1, pos=0, upd=time.time())   # согласились оба: поехали
+    if hr and gr: bump(s["id"], hr=1, gr=1, started=1, playing=1, pos=0, upd=time.time())
     else: bump(s["id"], **{"hr" if host else "gr": v})
     return web.json_response({"ok": 1})
 
+
 async def s_ctl(request):
-    """Управление воспроизведением: только ведущий. play / pause / seek / reset (вернуться в лобби)."""
     uid = auth(request); b = await request.json(); s = mine_session(uid, int(b["id"]))
     if s["host"] != uid or s["status"] != "active": return jerr("state")
     act = b.get("act")
@@ -1187,16 +1245,17 @@ async def s_ctl(request):
     elif not s["started"]: return jerr("state")
     elif act == "play": bump(s["id"], playing=1, pos=pos, upd=now)
     elif act == "pause": bump(s["id"], playing=0, pos=pos, upd=now)
-    elif act == "seek": bump(s["id"], pos=pos, upd=now)      # флаг playing не трогаем
+    elif act == "seek": bump(s["id"], pos=pos, upd=now)
     else: return jerr("bad")
     return web.json_response({"ok": 1})
+
 
 async def s_stop(request):
     uid = auth(request); b = await request.json(); s = mine_session(uid, int(b["id"]))
     if s["status"] in ("invited", "open", "active"): bump(s["id"], status="ended")
     return web.json_response({"ok": 1})
 
-# ── Чат сессии ──
+
 async def s_chat_get(request):
     uid = auth(request); s = mine_session(uid, int(request.query["id"])); after = int(request.query.get("after", 0))
     if after:
@@ -1204,6 +1263,7 @@ async def s_chat_get(request):
     else:
         rows = db.execute("SELECT * FROM (SELECT id,uid,text,ts,(img IS NOT NULL AND img!='') AS hi FROM smsgs WHERE sid=? ORDER BY id DESC LIMIT 100) ORDER BY id", (s["id"],)).fetchall()
     return web.json_response({"msgs": [{"id": r["id"], "me": r["uid"] == uid, "text": r["text"], "ts": r["ts"], "img": bool(r["hi"])} for r in rows]})
+
 
 async def s_chat_send(request):
     uid = auth(request); b = await request.json(); s = mine_session(uid, int(b["id"]))
@@ -1220,51 +1280,57 @@ async def s_chat_send(request):
     SCHAT[s["id"]] = cur.lastrowid
     peer = s["guest"] if s["host"] == uid else s["host"]
     k = (s["id"], peer)
-    # собеседник сейчас не на экране сессии: одно уведомление в Telegram не чаще раза в 2 минуты (эмодзи-реакции не считаем)
     if text not in REACT and now - SSEEN.get(k, 0) > 8 and now - SNOTE.get(k, 0) > 120:
         SNOTE[k] = now
         try: await BOT.send_message(peer, bt(peer, "sess_chat", name=who(uid, peer), text=(text or "📷")[:200]), reply_markup=kb(peer))
         except Exception: pass
     return web.json_response({"ok": 1, "id": cur.lastrowid})
 
+
 async def s_chat_img(request):
     uid = auth(request); s = mine_session(uid, int(request.query["id"]))
     r = db.execute("SELECT img FROM smsgs WHERE id=? AND sid=?", (int(request.query["mid"]), s["id"])).fetchone()
     return web.json_response({"img": (r["img"] if r and r["img"] else "")})
+
 
 async def s_typing(request):
     uid = auth(request); b = await request.json(); s = mine_session(uid, int(b["id"]))
     if s["status"] == "active": STYP[(s["id"], uid)] = time.time()
     return web.json_response({"ok": 1})
 
-# ───────────────────────── Свой вход: логин + пароль ─────────────────────────
-# Аккаунты сайта получают отрицательный uid, чтобы не пересекаться с Telegram ID (они всегда положительные).
+
 LOGIN_RE = re.compile(r"^[A-Za-z0-9_.\-]{3,24}$")
-FAILS = {}                                # ключ -> [число попыток, начало окна]
+FAILS = {}
+
 
 def pwd_hash(p, salt=None):
     salt = salt or secrets.token_bytes(16)
     return salt.hex() + "$" + hashlib.scrypt(p.encode(), salt=salt, n=2 ** 14, r=8, p=1, dklen=32).hex()
+
 
 def pwd_check(p, stored):
     try: s, h = stored.split("$"); salt = bytes.fromhex(s)
     except ValueError: return False
     return hmac.compare_digest(pwd_hash(p, salt).split("$")[1], h)
 
+
 def throttled(key, limit, win):
     e = FAILS.get(key)
     return bool(e and time.time() - e[1] <= win and e[0] >= limit)
 
-def bump(key, win):
+
+def fail_bump(key, win):
     now = time.time(); e = FAILS.get(key)
     if not e or now - e[1] > win: FAILS[key] = [1, now]
     else: e[0] += 1
     if len(FAILS) > 20000: FAILS.clear()
 
+
 def new_web_session(uid):
     s = secrets.token_urlsafe(32)
     db.execute("INSERT INTO web_sessions VALUES(?,?,?)", (s, uid, time.time())); db.commit()
     return s
+
 
 async def auth_register(request):
     ip = request.remote or ""
@@ -1275,7 +1341,7 @@ async def auth_register(request):
     if not 8 <= len(pw) <= 128: return web.json_response({"error": "bad_pass"})
     key = lg.lower()
     if db.execute("SELECT 1 FROM accounts WHERE login=?", (key,)).fetchone(): return web.json_response({"error": "taken"})
-    bump("r:" + ip, 3600)
+    fail_bump("r:" + ip, 3600)
     h = await asyncio.to_thread(pwd_hash, pw)
     uid = min(db.execute("SELECT MIN(uid) FROM users").fetchone()[0] or 0, 0) - 1
     try: db.execute("INSERT INTO accounts VALUES(?,?,?,?)", (key, uid, h, time.time()))
@@ -1283,7 +1349,10 @@ async def auth_register(request):
     ensure_user(uid, lg)
     return web.json_response({"token": new_web_session(uid)})
 
+
 DUMMY = pwd_hash("x")
+
+
 async def auth_login(request):
     ip = request.remote or ""
     b = await request.json()
@@ -1292,12 +1361,13 @@ async def auth_login(request):
     r = db.execute("SELECT uid,pwd FROM accounts WHERE login=?", (key,)).fetchone()
     ok = await asyncio.to_thread(pwd_check, pw, r["pwd"] if r else DUMMY)
     if not (r and ok):
-        bump("l:" + ip, 600); bump("u:" + key, 600)
+        fail_bump("l:" + ip, 600); fail_bump("u:" + key, 600)
         return web.json_response({"error": "bad_creds"})
     return web.json_response({"token": new_web_session(r["uid"])})
 
-# ───────────────────────── Вход на сайт через бота ─────────────────────────
-LOGINS = {}                               # одноразовый токен -> [создан, uid или None]; живёт 10 минут
+
+LOGINS = {}
+
 
 async def auth_start(request):
     now = time.time()
@@ -1306,6 +1376,7 @@ async def auth_start(request):
     tok = secrets.token_urlsafe(24)
     LOGINS[tok] = [now, None]
     return web.json_response({"token": tok, "link": f"https://t.me/{ME['u']}?start=auth_{tok}"})
+
 
 async def auth_poll(request):
     tok = request.query.get("t", "")
@@ -1317,14 +1388,17 @@ async def auth_poll(request):
     db.execute("INSERT INTO web_sessions VALUES(?,?,?)", (s, e[1], time.time())); db.commit()
     return web.json_response({"token": s})
 
+
 async def auth_logout(request):
     tok = request.headers.get("X-Token", "")
     if tok: db.execute("DELETE FROM web_sessions WHERE token=?", (tok,)); db.commit()
     return web.json_response({"ok": 1})
 
+
 def html_path():
     ps = [p for p in (os.path.join(BASE, "webapp", "index.html"), os.path.join(BASE, "index.html")) if os.path.exists(p)]
-    return max(ps, key=os.path.getmtime) if ps else None   # берём самый свежий, если файлов два
+    return max(ps, key=os.path.getmtime) if ps else None
+
 
 async def index(request):
     p = html_path()
@@ -1332,21 +1406,24 @@ async def index(request):
     with open(p, encoding="utf-8") as f:
         return web.Response(text=f.read(), content_type="text/html", headers={"Cache-Control": "no-cache"})
 
+
 @web.middleware
 async def gzip_mw(request, handler):
     resp = await handler(request)
     if isinstance(resp, web.Response) and isinstance(resp.body, (bytes, bytearray)) and len(resp.body) > 600:
-        resp.enable_compression()   # JSON и HTML по ngrok уменьшаются в 3–8 раз
+        resp.enable_compression()
     return resp
 
-# ───────────────────────── Бот ─────────────────────────
+
 dp = Dispatcher()
 BOT = Bot(TOKEN)
 ME = {}
 
+
 def kb(uid_or_lang="ru"):
     lang = uid_or_lang if uid_or_lang in BT else lang_of(uid_or_lang)
     return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=BT[lang]["open"], web_app=WebAppInfo(url=URL))]])
+
 
 @dp.message(CommandStart())
 async def start(m: Message, command: CommandObject):
@@ -1354,7 +1431,7 @@ async def start(m: Message, command: CommandObject):
     db.execute("INSERT INTO users(uid,name) VALUES(?,?) ON CONFLICT(uid) DO UPDATE SET name=excluded.name", (me.id, me.full_name)); db.commit()
     ensure_user(me.id, me.full_name)
     a = command.args or ""
-    if a.startswith("auth_"):                                   # вход на сайт
+    if a.startswith("auth_"):
         e = LOGINS.get(a[5:])
         if not e or time.time() - e[0] > 600:
             return await m.answer(bt(me.id, "login_bad"))
@@ -1367,12 +1444,13 @@ async def start(m: Message, command: CommandObject):
             await m.answer(bt(me.id, "friends_ok"))
             try: await BOT.send_message(fid, bt(fid, "friend_added", name=me.full_name))
             except Exception: pass
-    if a.startswith("w") and len(a) > 1:                       # ссылка-приглашение в сессию
+    if a.startswith("w") and len(a) > 1:
         code, host = await join_by_token(me.id, a[1:])
         if code == "ok":
             return await m.answer(bt(me.id, "sess_joined", name=who(host, me.id)), reply_markup=kb(me.id))
         return await m.answer(bt(me.id, SESS_ERR.get(code, "sess_gone")))
     await m.answer(bt(me.id, "hello"), reply_markup=kb(me.id))
+
 
 @dp.message(Command("lang"))
 async def lang_cmd(m: Message, command: CommandObject):
@@ -1384,9 +1462,9 @@ async def lang_cmd(m: Message, command: CommandObject):
     LANG[m.from_user.id] = l
     await m.answer(BT[l]["lang_set"], reply_markup=kb(l))
 
+
 @dp.message(Command("watch"))
 async def watch_cmd(m: Message, command: CommandObject):
-    """/watch anime <shikimori_id> | /watch movie <tmdb_id> -> кнопка, открывающая плеер внутри Telegram (WebApp)."""
     uid = m.from_user.id
     parts = (command.args or "").split()
     if len(parts) != 2 or parts[0].lower() not in ("anime", "movie") or not parts[1].isdigit():
@@ -1404,11 +1482,13 @@ async def watch_cmd(m: Message, command: CommandObject):
         InlineKeyboardButton(text=bt(uid, "watch_btn"), web_app=WebAppInfo(url=player_url))]])
     await m.answer(bt(uid, "watch_ready"), reply_markup=markup)
 
+
 @dp.message(Command("remind"))
 async def remind(m: Message, command: CommandObject):
     on = 0 if (command.args or "").strip() == "off" else 1
     db.execute("INSERT INTO users(uid,name,remind) VALUES(?,?,?) ON CONFLICT(uid) DO UPDATE SET remind=?", (m.from_user.id, m.from_user.full_name, on, on)); db.commit()
     await m.answer(bt(m.from_user.id, "remind_on" if on else "remind_off"))
+
 
 @dp.message(Command("export"))
 async def export(m: Message):
@@ -1417,6 +1497,7 @@ async def export(m: Message):
         return await m.answer(bt(m.from_user.id, "empty"))
     buf = io.StringIO(); w = csv.writer(buf); w.writerow(rows[0].keys()); w.writerows([tuple(r) for r in rows])
     await m.answer_document(BufferedInputFile(("\ufeff" + buf.getvalue()).encode(), "my_cinema.csv"))
+
 
 @dp.callback_query(F.data.startswith("lg:"))
 async def cb_login(c: CallbackQuery):
@@ -1428,6 +1509,7 @@ async def cb_login(c: CallbackQuery):
     await c.answer()
     try: await c.message.edit_text(bt(uid, "login_ok"))
     except Exception: pass
+
 
 @dp.callback_query(F.data.startswith("sa:"))
 async def cb_sess_accept(c: CallbackQuery):
@@ -1444,6 +1526,7 @@ async def cb_sess_accept(c: CallbackQuery):
     try: await c.message.edit_text(bt(uid, "sess_ok"), reply_markup=kb(uid))
     except Exception: pass
 
+
 @dp.callback_query(F.data.startswith("sd:"))
 async def cb_sess_decline(c: CallbackQuery):
     uid = c.from_user.id
@@ -1454,6 +1537,7 @@ async def cb_sess_decline(c: CallbackQuery):
     await c.answer()
     try: await c.message.edit_text(bt(uid, "sess_no"), reply_markup=kb(uid))
     except Exception: pass
+
 
 async def reminders():
     while True:
@@ -1470,6 +1554,7 @@ async def reminders():
                     except Exception: pass
         await asyncio.sleep(1800)
 
+
 async def ngrok_url():
     for _ in range(30):
         try:
@@ -1482,6 +1567,7 @@ async def ngrok_url():
             pass
         await asyncio.sleep(1)
     raise SystemExit("Не нашёл ngrok. Запусти его командой: ngrok http 8080")
+
 
 def make_app():
     app = web.Application(client_max_size=4 * 1024 ** 2, middlewares=[gzip_mw])
@@ -1504,13 +1590,14 @@ def make_app():
         web.get("/api/session/img", s_chat_img), web.post("/api/session/typing", s_typing)])
     return app
 
+
 async def main():
     global URL, HTTP, WEB
     if URL.strip() in ("", "auto"):
         URL = await ngrok_url()
     print("Mini-app URL:", URL)
     HTTP = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10),
-                                 connector=aiohttp.TCPConnector(limit=30, ttl_dns_cache=300))   # одна сессия на всё
+                                 connector=aiohttp.TCPConnector(limit=30, ttl_dns_cache=300))
     WEB = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=8), connector=aiohttp.TCPConnector(resolver=SafeResolver(), limit=10))
     try:
         await BOT.set_chat_menu_button(menu_button=MenuButtonWebApp(text="MY CINEMA", web_app=WebAppInfo(url=URL)))
@@ -1524,6 +1611,7 @@ async def main():
         await dp.start_polling(BOT)
     finally:
         await HTTP.close(); await WEB.close()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
